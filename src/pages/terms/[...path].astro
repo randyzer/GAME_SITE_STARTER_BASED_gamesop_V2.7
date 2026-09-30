@@ -1,0 +1,19 @@
+---
+import LegalPage from "../../components/LegalPage.astro";
+import { enabledPageCatalog } from "../../core/site-data";
+import type { PageInventoryEntry } from "../../data/schemas/page-inventory";
+
+export function getStaticPaths() {
+  return enabledPageCatalog.filter((page) => page.pageType === "terms").map((page) => {
+    if (page.route !== "/terms/") throw new Error(`Unsupported Terms route: ${page.route}`);
+    return { params: { path: undefined }, props: { page } };
+  });
+}
+
+interface Props {
+  page: PageInventoryEntry;
+}
+const { page } = Astro.props;
+---
+
+<LegalPage page={page} copyType="terms" kicker="Terms of use" />

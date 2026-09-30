@@ -44,6 +44,14 @@ export const entityReferenceSchema = z
   })
   .strict();
 
+export const legalActivationSchema = z.discriminatedUnion("state", [
+  z.object({ state: z.literal("unavailable") }).strict(),
+  z.object({
+    state: z.literal("active"),
+    approvedContentSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict(),
+]);
+
 export const pageInventoryEntrySchema = z
   .object({
     pageId: z.string().regex(/^[a-z0-9]+(?:[.-][a-z0-9]+)*$/),
@@ -76,6 +84,7 @@ export const pageInventoryEntrySchema = z
     developmentStatus: z.enum(["planned", "building", "ready", "blocked"]),
     needsReview: z.boolean(),
     needsUpdate: z.boolean(),
+    legalActivation: legalActivationSchema.optional(),
     indexability: z.enum(["index", "noindex"]),
     title: z.string().trim().min(20).max(65),
     description: z.string().trim().min(50).max(170),
@@ -98,6 +107,13 @@ export const pageInventoryEntrySchema = z
   })
   .strict()
   .superRefine((entry, context) => {
+    if (entry.legalActivation && !["privacy", "terms"].includes(entry.pageType)) {
+      context.addIssue({
+        code: "custom",
+        message: `Non-legal page "${entry.pageId}" cannot declare legalActivation.`,
+        path: ["legalActivation"],
+      });
+    }
     if (
       entry.visibility === "public" &&
       entry.publicationStatus === "published" &&
@@ -117,8 +133,19 @@ export const pageInventorySchema = z
     const pageIds = new Map<string, number>();
     const routes = new Map<string, number>();
     const primaryKeywords = new Map<string, number>();
+    const legalPageTypes = new Set<string>();
 
     entries.forEach((entry, index) => {
+      if (entry.pageType === "privacy" || entry.pageType === "terms") {
+        if (legalPageTypes.has(entry.pageType)) {
+          context.addIssue({
+            code: "custom",
+            message: `Duplicate legal page type: ${entry.pageType}`,
+            path: [index, "pageType"],
+          });
+        }
+        legalPageTypes.add(entry.pageType);
+      }
       const normalizedPrimaryKeyword = entry.primaryKeyword
         .trim()
         .toLocaleLowerCase("en");

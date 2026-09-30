@@ -19,6 +19,7 @@ import {
   type EntityFactModule,
 } from "../src/data/entity-modules";
 import pageInventoryData from "../src/data/page-inventory.json";
+import { legalContent } from "../src/data/legal-content";
 import { parsePageInventory } from "../src/data/schemas/page-inventory";
 import { createMediaCatalog } from "../src/data/media/catalog";
 import mediaManifest from "../src/data/media/media.json";
@@ -133,11 +134,10 @@ const validationErrors = collectSiteValidationErrors({
   inventory,
   contentEntries,
   factModules,
+  legalContent,
   fixedRoutes: [
     "/",
     "/about/",
-    "/privacy/",
-    "/terms/",
     "/404.html",
   ],
   implementedPageTypes: [
@@ -168,7 +168,7 @@ if (errors.length > 0) {
   for (const item of info) console.info(`Info: ${item}`);
   return 1;
 } else {
-  const enabledPages = buildEnabledPageCatalog(gameConfig, inventory);
+  const enabledPages = buildEnabledPageCatalog(gameConfig, inventory, legalContent);
   console.log(
     `Site validation passed: ${enabledPages.length} enabled pages, ${contentEntries.length} content entries.`,
   );

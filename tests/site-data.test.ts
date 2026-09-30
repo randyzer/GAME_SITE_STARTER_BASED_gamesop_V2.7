@@ -14,6 +14,18 @@ import {
 } from "../src/core/site-data";
 
 describe("site data", () => {
+  it.each(["privacy", "terms"])("omits unavailable %s from every resolved destination", (pageId) => {
+    expect(() => getPageByRoute(`/${pageId}/`)).toThrow(/enabled page/i);
+    expect(enabledPageCatalog.some((page) => page.pageId === pageId)).toBe(false);
+    const home = getPageByRoute("/");
+    expect(getRelatedPages({ ...home, relatedPageIds: [pageId, "about"] }).map((page) => page.pageId)).toEqual(["about"]);
+    expect(() => resolveNavigationGroups([{ pageId, children: [] }], enabledPageCatalog)).toThrow(/enabled catalog/i);
+  });
+
+  it("preserves home, About and 404 destinations", () => {
+    expect(["/", "/about/", "/404.html"].map((route) => getPageByRoute(route).pageType))
+      .toEqual(["home", "about", "not-found"]);
+  });
   it("exposes only routes allowed by config and inventory", () => {
     for (const page of pageInventory) {
       const shouldBeEnabled =

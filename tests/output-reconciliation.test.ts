@@ -1,7 +1,9 @@
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   rmSync,
+  readFileSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -29,6 +31,27 @@ function createOutputFixture() {
 }
 
 describe("static output reconciliation", () => {
+  it.each(["privacy", "terms"])("migrates fixed %s to a catalog-driven optional static handler", (pageType) => {
+    const oldRoute = new URL(`../src/pages/${pageType}.astro`, import.meta.url);
+    const optionalRoute = new URL(`../src/pages/${pageType}/[...path].astro`, import.meta.url);
+    expect(existsSync(oldRoute)).toBe(false);
+    expect(existsSync(optionalRoute)).toBe(true);
+    const source = readFileSync(optionalRoute, "utf8");
+    expect(source).toContain("getStaticPaths");
+    expect(source).toContain("enabledPageCatalog");
+  });
+  it.each(["privacy", "terms"])("rejects stale unavailable %s HTML", (pageType) => {
+    const directory = createOutputFixture();
+    const outputFile = join(directory, routeToOutputFile(`/${pageType}/`));
+    mkdirSync(dirname(outputFile), { recursive: true });
+    writeFileSync(outputFile, "<!doctype html><title>Stale policy</title>");
+    try {
+      expect(collectOutputReconciliationErrors(enabledPageCatalog, directory))
+        .toContain(`Unregistered HTML output found: /${pageType}/`);
+    } finally {
+      rmSync(directory, { recursive: true });
+    }
+  });
   it("maps inventory routes to Astro static output files", () => {
     expect(routeToOutputFile("/")).toBe("index.html");
     expect(routeToOutputFile("/guides/")).toBe("guides/index.html");

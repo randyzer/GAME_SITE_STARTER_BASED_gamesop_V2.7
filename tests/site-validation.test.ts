@@ -19,6 +19,20 @@ const guideContent = {
 };
 
 describe("collectSiteValidationErrors", () => {
+  it.each(["privacy", "terms"])("rejects explicit navigation and homepage references to unavailable %s", (pageId) => {
+    const config = defineGameConfig({
+      ...siteConfig,
+      features: { ...siteConfig.features, guides: false, search: false },
+      navigation: { groups: [{ pageId }] },
+      homepage: { featuredPageIds: [pageId] },
+    });
+    const errors = collectSiteValidationErrors({
+      config, inventory: pageInventory, contentEntries: [], factModules: {},
+      fixedRoutes: ["/", "/about/", "/404.html"], implementedPageTypes: [...pageTypeSchema.options],
+    });
+    expect(errors.join("\n")).toMatch(new RegExp(`Navigation.*${pageId}.*enabled catalog`, "i"));
+    expect(errors.join("\n")).toMatch(new RegExp(`Homepage.*${pageId}.*enabled catalog`, "i"));
+  });
   it("delegates navigation resolution to the site-data resolver", () => {
     const source = readFileSync(
       new URL("../src/core/site-validation.ts", import.meta.url),

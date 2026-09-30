@@ -13,13 +13,9 @@ describe("getStaticPageCopy", () => {
   });
 
   it.each(["privacy", "terms"] as const)(
-    "marks %s copy as non-legal starter text requiring review",
+    "provides no renderable starter fallback for %s",
     (pageType) => {
-      const copy = getStaticPageCopy(pageType);
-
-      expect(copy.reviewNotice).toMatch(/starter/i);
-      expect(copy.reviewNotice).toMatch(/not legal advice/i);
-      expect(copy.reviewNotice).toMatch(/qualified.*review/i);
+      expect(() => getStaticPageCopy(pageType)).toThrow(/legal.*content/i);
     },
   );
 });

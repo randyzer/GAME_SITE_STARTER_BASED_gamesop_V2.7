@@ -11,6 +11,7 @@ import {
 import type { ContentEntryReference } from "./page-resolution";
 import { buildEnabledPageCatalog } from "./catalog";
 import { resolveNavigationGroups } from "./site-data";
+import { resolveLegalPageSafety, type LegalContent } from "./legal-safety";
 
 export type { EntityFactModule } from "../data/entity-modules";
 
@@ -113,6 +114,7 @@ export interface SiteValidationInput {
   factModules: Partial<Record<EntityFactModule, unknown>>;
   fixedRoutes: string[];
   implementedPageTypes: PageType[];
+  legalContent?: LegalContent;
 }
 
 export function collectSiteValidationErrors(input: SiteValidationInput) {
@@ -121,7 +123,14 @@ export function collectSiteValidationErrors(input: SiteValidationInput) {
     input.inventory.map((page) => [page.pageId, page]),
   );
   const inventoryRoutes = new Set(input.inventory.map((page) => page.route));
-  const enabledPages = buildEnabledPageCatalog(input.config, input.inventory);
+  const legalResults = input.inventory.map((page) => resolveLegalPageSafety(page, input.legalContent));
+  errors.push(...legalResults.flatMap((result) => result.errors));
+  // Report invalid legal input before excluding it from downstream projections.
+  const enabledPages = buildEnabledPageCatalog(
+    input.config,
+    input.inventory.filter((_page, index) => legalResults[index].errors.length === 0),
+    input.legalContent,
+  );
   const enabledPageIds = new Set(enabledPages.map((page) => page.pageId));
   const implementedPageTypes = new Set(input.implementedPageTypes);
   const contentByPageId = new Map<string, ContentEntryReference[]>();

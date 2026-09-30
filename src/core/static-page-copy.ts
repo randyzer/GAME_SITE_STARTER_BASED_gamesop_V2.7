@@ -90,5 +90,8 @@ const staticPageCopy = {
 } satisfies Record<StaticPageType, StaticPageCopy>;
 
 export function getStaticPageCopy(pageType: StaticPageType): StaticPageCopy {
-  return staticPageCopy[pageType];
+  if (pageType !== "about") {
+    throw new Error("Legal pages require explicitly approved project legal content; starter copy is not renderable.");
+  }
+  return staticPageCopy.about;
 }

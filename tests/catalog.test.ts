@@ -164,6 +164,32 @@ describe("parsePageInventory", () => {
 });
 
 describe("buildEnabledPageCatalog", () => {
+  it.each(["privacy", "terms"] as const)(
+    "omitted activation leaves %s unavailable even with live inventory flags",
+    (pageType) => {
+      expect(() => buildEnabledPageCatalog(gameConfig, [page({
+        pageId: pageType,
+        pageType,
+        route: `/${pageType}/`,
+        indexability: "noindex",
+      })])).toThrow(/unavailable/i);
+    },
+  );
+
+  it("ships no enabled legal routes and keeps both inventory identities", () => {
+    const inventory = parsePageInventory(JSON.parse(readFileSync(
+      new URL("../src/data/page-inventory.json", import.meta.url), "utf8",
+    )));
+    expect(inventory.filter((entry) => ["privacy", "terms"].includes(entry.pageType))).toHaveLength(2);
+    expect(buildEnabledPageCatalog(gameConfig, inventory).map((entry) => entry.route))
+      .not.toEqual(expect.arrayContaining(["/privacy/", "/terms/"]));
+    for (const entry of inventory.filter((entry) => ["privacy", "terms"].includes(entry.pageType))) {
+      expect(entry.visibility).toBe("private");
+      expect(entry.publicationStatus).toBe("draft");
+      expect(entry.contentStatus).toBe("draft");
+      expect(entry.indexability).toBe("noindex");
+    }
+  });
   it("excludes a page owned by a disabled feature", () => {
     const inventory = parsePageInventory([
       basePage,

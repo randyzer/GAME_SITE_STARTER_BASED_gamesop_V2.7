@@ -1,4 +1,5 @@
 import pageInventoryData from "../data/page-inventory.json";
+import { legalContent } from "../data/legal-content";
 import type { GameConfig } from "../config/schema";
 import {
   parsePageInventory,
@@ -6,12 +7,14 @@ import {
 } from "../data/schemas/page-inventory";
 import { loadGameConfig } from "../config/load-config";
 import { buildEnabledPageCatalog } from "./catalog";
+import { resolveLegalPageSafety, type ResolvedLegalPayload } from "./legal-safety";
 
 export const siteConfig = loadGameConfig();
 export const pageInventory = parsePageInventory(pageInventoryData);
 export const enabledPageCatalog = buildEnabledPageCatalog(
   siteConfig,
   pageInventory,
+  legalContent,
 );
 
 const enabledPageByRoute = new Map(
@@ -54,9 +57,10 @@ export function resolveNavigationGroups(
 }
 
 function resolveEnabledPageIds(pageIds: string[]) {
-  return pageIds.flatMap((pageId) => {
+  return pageIds.map((pageId) => {
     const page = enabledPageById.get(pageId);
-    return page ? [page] : [];
+    if (!page) throw new Error(`Homepage references page "${pageId}", but it is not in the enabled catalog.`);
+    return page;
   });
 }
 
@@ -90,4 +94,12 @@ export function getRelatedPages(page: PageInventoryEntry) {
     const relatedPage = enabledPageById.get(pageId);
     return relatedPage ? [relatedPage] : [];
   });
+}
+
+export function getLegalPageContent(page: PageInventoryEntry): ResolvedLegalPayload {
+  const result = resolveLegalPageSafety(page, legalContent);
+  if (!result.eligible || !result.payload) {
+    throw new Error(result.errors.join("\n") || `No approved legal content for page "${page.pageId}".`);
+  }
+  return result.payload;
 }

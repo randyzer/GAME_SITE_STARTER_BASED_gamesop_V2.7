@@ -1,6 +1,6 @@
 ---
 import { getStaticPageCopy, type StaticPageType } from "../core/static-page-copy";
-import { getRelatedPages } from "../core/site-data";
+import { getLegalPageContent, getRelatedPages } from "../core/site-data";
 import type { PageInventoryEntry } from "../data/schemas/page-inventory";
 import BaseLayout from "../layouts/BaseLayout.astro";
 
@@ -11,7 +11,11 @@ interface Props {
 }
 
 const { page, copyType, kicker } = Astro.props;
-const copy = getStaticPageCopy(copyType);
+if (copyType !== page.pageType) throw new Error(`Static copy type does not match page "${page.pageId}".`);
+const aboutCopy = copyType === "about" ? getStaticPageCopy("about") : undefined;
+const legalCopy = aboutCopy ? undefined : getLegalPageContent(page);
+const copy = aboutCopy ?? legalCopy!;
+const notice = legalCopy?.notice ?? aboutCopy?.reviewNotice;
 const relatedPages = getRelatedPages(page);
 ---
 
@@ -23,17 +27,16 @@ const relatedPages = getRelatedPages(page);
   >
     <header class="static-page__header reveal reveal--1">
       <p class="eyebrow">{kicker}</p>
-      <h1 data-pagefind-meta="title">{page.title}</h1>
+      <h1 data-pagefind-meta="title">{legalCopy?.title ?? page.title}</h1>
       <p class="static-page__intro" data-pagefind-meta="description">{copy.intro}</p>
-      <p class="static-page__date">Last reviewed / {page.updatedAt}</p>
+      {aboutCopy && <p class="static-page__date">Last reviewed / {page.updatedAt}</p>}
     </header>
 
-    {copy.reviewNotice && (
-      <aside class="review-notice" aria-label="Required legal review">
+    {notice !== undefined && notice !== null && (
+      <aside class="review-notice" aria-label="Policy notice">
         <span aria-hidden="true">!</span>
         <div>
-          <strong>Operator action required</strong>
-          <p>{copy.reviewNotice}</p>
+          <p>{notice}</p>
         </div>
       </aside>
     )}
