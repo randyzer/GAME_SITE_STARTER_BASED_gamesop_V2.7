@@ -1,7 +1,11 @@
 import type { GameConfig } from "../config/schema";
 import { adsConfig, type AdsConfig } from "../config/ads";
 import type { PageInventoryEntry } from "../data/schemas/page-inventory";
-import { buildCanonicalUrl } from "./seo";
+import {
+  buildCanonicalUrl,
+  collectStructuredIdentityErrors,
+  resolveStructuredIdentity,
+} from "./seo";
 
 interface BuildHtmlAuditInput {
   config: GameConfig;
@@ -102,6 +106,79 @@ function internalRouteFromHref(
   }
 }
 
+function hasExplicitlyHiddenAncestor(html: string, offset: number): boolean {
+  const stack: Array<Map<string, string>> = [];
+  const prefix = html.slice(0, offset);
+  for (const match of prefix.matchAll(/<\/?([a-z][\w:-]*)\b[^>]*>/gi)) {
+    const tag = match[0];
+    const tagName = match[1].toLocaleLowerCase("en");
+    if (/^<\//.test(tag)) {
+      const openingIndex = stack.findLastIndex((entry) => entry.get("__tag") === tagName);
+      if (openingIndex >= 0) stack.splice(openingIndex);
+      continue;
+    }
+    if (voidHtmlTags.has(tagName) || /\/\s*>$/.test(tag)) continue;
+    const attributes = attributesFromTag(tag);
+    attributes.set("__tag", tagName);
+    stack.push(attributes);
+  }
+  return stack.some(
+    (attributes) => attributes.has("hidden") || attributes.get("aria-hidden") === "true",
+  );
+}
+
+function collectStructuredAuthorAttributionErrors(
+  config: GameConfig,
+  page: PageInventoryEntry,
+  html: string,
+): string[] {
+  const errors: string[] = [];
+  const expected = resolveStructuredIdentity(config, page).authorAttribution;
+  const allAttributions = [...html.matchAll(/<dd\b([^>]*)>([\s\S]*?)<\/dd>/gi)].filter(
+    (match) => attributesFromTag(match[1]).has("data-structured-author-id"),
+  );
+
+  if (!expected) {
+    if (allAttributions.length > 0) {
+      errors.push(`[${page.route}] Page exposes structured-author attribution without a configured article author.`);
+    }
+    return errors;
+  }
+
+  const header = [...html.matchAll(/<header\b([^>]*)>([\s\S]*?)<\/header>/gi)].find((match) =>
+    (attributesFromTag(match[1]).get("class") ?? "").split(/\s+/).includes("article__header"),
+  );
+  if (!header) {
+    return [`[${page.route}] Configured article author requires a visible Article header attribution.`];
+  }
+
+  const headerAttributes = attributesFromTag(header[1]);
+  const headerAttributions = [...header[2].matchAll(/<dd\b([^>]*)>([\s\S]*?)<\/dd>/gi)].filter(
+    (match) => attributesFromTag(match[1]).has("data-structured-author-id"),
+  );
+  if (allAttributions.length !== 1 || headerAttributions.length !== 1) {
+    errors.push(`[${page.route}] Configured article author requires exactly one attribution inside the Article header.`);
+    return errors;
+  }
+
+  const [match] = headerAttributions;
+  const attributes = attributesFromTag(match[1]);
+  const renderedName = decodeHtml(match[2].replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim());
+  if (attributes.get("data-structured-author-id") !== expected.id || renderedName !== expected.name) {
+    errors.push(`[${page.route}] Visible author attribution does not match structured author identity.`);
+  }
+  if (
+    attributes.has("hidden") ||
+    attributes.get("aria-hidden") === "true" ||
+    headerAttributes.has("hidden") ||
+    headerAttributes.get("aria-hidden") === "true" ||
+    hasExplicitlyHiddenAncestor(header[2], match.index ?? 0)
+  ) {
+    errors.push(`[${page.route}] Structured author attribution must not be explicitly hidden.`);
+  }
+  return errors;
+}
+
 function analyzeHtmlPage(
   config: GameConfig,
   page: PageInventoryEntry,
@@ -153,13 +230,16 @@ function analyzeHtmlPage(
   if (jsonLdScripts.length === 0) {
     errors.push(`[${page.route}] Page is missing JSON-LD.`);
   }
+  const parsedJsonLd: unknown[] = [];
   for (const script of jsonLdScripts) {
     try {
-      JSON.parse(script[2]);
+      parsedJsonLd.push(JSON.parse(script[2]));
     } catch {
       errors.push(`[${page.route}] Page contains invalid JSON-LD.`);
     }
   }
+  errors.push(...collectStructuredIdentityErrors(config, page, parsedJsonLd));
+  errors.push(...collectStructuredAuthorAttributionErrors(config, page, html));
 
   for (const imageTag of openingTags(html, "img")) {
     if (!attributesFromTag(imageTag).has("alt")) {

@@ -140,4 +140,15 @@ describe("WikiArticle", () => {
       html.indexOf('class="sources evidence section-rule"'),
     );
   });
+  it("uses the structured identity resolver and emits no default author attribution", async () => {
+    const wikiArticle = source(wikiArticleUrl);
+    expect(wikiArticle).toContain("resolveStructuredIdentity(siteConfig, page).authorAttribution");
+    expect(wikiArticle).toContain("data-structured-author-id");
+    const page = pageInventory.find((entry) => entry.pageId === "guide.getting-started")!;
+    const container = await AstroContainer.create();
+    const html = await container.renderToString(WikiArticle, { props: { page }, slots: { default: "<p>Body</p>" } });
+    expect(html).not.toContain("data-structured-author-id");
+    expect(html).not.toMatch(/<dt>Author<\/dt>/);
+  });
+
 });

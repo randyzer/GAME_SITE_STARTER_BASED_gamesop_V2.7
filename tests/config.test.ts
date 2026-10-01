@@ -176,4 +176,56 @@ describe("defineGameConfig", () => {
       } as GameConfigInput),
     ).toThrow();
   });
+  it("accepts explicit identity and independent role evidence", () => {
+    const config = defineGameConfig({
+      ...validConfig,
+      identity: {
+        organization: {
+          kind: "Organization", name: "Atlas Studio", projectConfirmed: true, evidenceRef: "entity:studio",
+        },
+        sitePublisher: {
+          identity: { kind: "Person", name: "Site Publisher", projectConfirmed: true, evidenceRef: "entity:publisher" },
+          evidenceRef: "role:site-publisher",
+        },
+        articles: {
+          "guide.getting-started": {
+            author: {
+              identity: { kind: "Person", name: "Guide Author", projectConfirmed: true, evidenceRef: "entity:author" },
+              evidenceRef: "role:article-author",
+            },
+          },
+        },
+      },
+    });
+    expect(config.identity?.organization?.kind).toBe("Organization");
+    expect(config.identity?.sitePublisher?.identity.name).toBe("Site Publisher");
+    expect(config.identity?.articles?.["guide.getting-started"]?.author?.identity.name).toBe("Guide Author");
+  });
+
+  it.each([
+    ["false confirmation", { kind: "Person", name: "Author", projectConfirmed: false, evidenceRef: "entity:author" }],
+    ["string confirmation", { kind: "Person", name: "Author", projectConfirmed: "true", evidenceRef: "entity:author" }],
+    ["blank evidence", { kind: "Person", name: "Author", projectConfirmed: true, evidenceRef: "   " }],
+  ])("rejects identity with %s", (_label, identity) => {
+    expect(() => defineGameConfig({
+      ...validConfig,
+      identity: {
+        sitePublisher: { identity, evidenceRef: "role:publisher" },
+      },
+    } as GameConfigInput)).toThrow();
+  });
+
+  it("rejects Person in the organization-only slot and unknown identity keys", () => {
+    expect(() => defineGameConfig({
+      ...validConfig,
+      identity: {
+        organization: { kind: "Person", name: "Not an org", projectConfirmed: true, evidenceRef: "entity:x" },
+      },
+    } as unknown as GameConfigInput)).toThrow();
+    expect(() => defineGameConfig({
+      ...validConfig,
+      identity: { unexpected: true },
+    } as unknown as GameConfigInput)).toThrow();
+  });
+
 });

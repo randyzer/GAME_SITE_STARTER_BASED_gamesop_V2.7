@@ -286,4 +286,25 @@ describe("collectSiteValidationErrors", () => {
       'Page "home" uses unsupported module "unsupported". Supported modules: core, guides, heroes, weapons, items, maps, tierLists, news, search, tools.',
     );
   });
+  it("rejects identity article mappings for unknown or non-Article page IDs", () => {
+    const identity = (pageId: string) => ({
+      articles: {
+        [pageId]: {
+          author: {
+            identity: { kind: "Person" as const, name: "Author", projectConfirmed: true as const, evidenceRef: "entity:author" },
+            evidenceRef: "role:author",
+          },
+        },
+      },
+    });
+    for (const [pageId, expected] of [["guide.unknown", /unknown article pageId/i], ["home", /non-Article page type/i]] as const) {
+      const config = defineGameConfig({ ...siteConfig, identity: identity(pageId) });
+      const errors = collectSiteValidationErrors({
+        config, inventory: pageInventory, contentEntries: [guideContent], factModules: {},
+        fixedRoutes: ["/"], implementedPageTypes: [...pageTypeSchema.options],
+      }).join("\n");
+      expect(errors).toMatch(expected);
+    }
+  });
+
 });

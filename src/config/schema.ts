@@ -84,6 +84,38 @@ const navigationSchema = z.union([
   legacyNavigationSchema,
 ]);
 
+const identityEvidenceRefSchema = z.string().trim().min(1);
+const confirmedIdentitySchema = z
+  .object({
+    kind: z.enum(["Organization", "Person"]),
+    name: z.string().trim().min(1),
+    projectConfirmed: z.literal(true),
+    evidenceRef: identityEvidenceRefSchema,
+  })
+  .strict();
+const confirmedOrganizationIdentitySchema = confirmedIdentitySchema.extend({
+  kind: z.literal("Organization"),
+});
+const confirmedRoleSchema = z
+  .object({
+    identity: confirmedIdentitySchema,
+    evidenceRef: identityEvidenceRefSchema,
+  })
+  .strict();
+const articleIdentityRolesSchema = z
+  .object({
+    author: confirmedRoleSchema.optional(),
+    publisher: confirmedRoleSchema.optional(),
+  })
+  .strict();
+const identityConfigSchema = z
+  .object({
+    organization: confirmedOrganizationIdentitySchema.optional(),
+    sitePublisher: confirmedRoleSchema.optional(),
+    articles: z.record(pageIdSchema, articleIdentityRolesSchema).optional(),
+  })
+  .strict();
+
 export const gameConfigSchema = z
   .object({
     brand: z
@@ -124,6 +156,7 @@ export const gameConfigSchema = z
         xHandle: z.string().regex(/^@[A-Za-z0-9_]{1,15}$/).optional(),
       })
       .strict(),
+    identity: identityConfigSchema.optional(),
     navigation: navigationSchema,
     homepage: z
       .object({

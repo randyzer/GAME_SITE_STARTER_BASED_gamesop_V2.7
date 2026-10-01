@@ -5,6 +5,7 @@ import { siteConfig } from "../core/site-data";
 import {
   buildBaseSeoGraph,
   buildCanonicalUrl,
+  collectStructuredIdentityErrors,
   serializeJsonLd,
   type StructuredDataNode,
 } from "../core/seo";
@@ -30,6 +31,16 @@ const graph = [
       ? [structuredData]
       : []),
 ];
+const jsonLdDocument = {
+  "@context": "https://schema.org",
+  "@graph": graph,
+};
+const identityErrors = collectStructuredIdentityErrors(siteConfig, page, [jsonLdDocument]);
+if (identityErrors.length > 0) {
+  throw new Error(
+    `Structured identity safety failed for "${page.pageId}": ${identityErrors.join(" ")}`,
+  );
+}
 ---
 
 <!doctype html>
@@ -60,10 +71,7 @@ const graph = [
     <script
       is:inline
       type="application/ld+json"
-      set:html={serializeJsonLd({
-        "@context": "https://schema.org",
-        "@graph": graph,
-      })}
+      set:html={serializeJsonLd(jsonLdDocument)}
     />
   </head>
   <body id="top" data-page-family={page.module}>

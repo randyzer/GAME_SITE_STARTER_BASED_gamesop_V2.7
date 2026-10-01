@@ -6,6 +6,8 @@ import {
   collectReferencedAssetPaths,
 } from "../src/core/html-audit";
 import { defineAdsConfig } from "../src/config/ads";
+import { defineGameConfig } from "../src/config/schema";
+import { buildArticleSchema, buildBaseSeoGraph, resolveStructuredIdentity } from "../src/core/seo";
 import {
   enabledPageCatalog,
   getPageByRoute,
@@ -129,6 +131,72 @@ describe("generated HTML audit", () => {
     expect(errors).toMatch(/duplicate title/i);
     expect(errors).toMatch(/duplicate description/i);
     expect(errors).toMatch(/orphaned.*about/i);
+  });
+
+
+  it("accepts configured structured author only when graph and visible attribution match", () => {
+    const home = getPageByRoute("/");
+    const guide = enabledPageCatalog.find((page) => page.pageId === "guide.getting-started")!;
+    const config = defineGameConfig({
+      ...siteConfig,
+      identity: {
+        articles: {
+          [guide.pageId]: {
+            author: {
+              identity: { kind: "Person", name: "Guide Author", projectConfirmed: true, evidenceRef: "entity:author" },
+              evidenceRef: "role:author",
+            },
+          },
+        },
+      },
+    });
+    const resolved = resolveStructuredIdentity(config, guide);
+    const document = {
+      "@context": "https://schema.org",
+      "@graph": [...buildBaseSeoGraph(config, guide), buildArticleSchema(config, guide)],
+    };
+    const guideHtml = validHtml(guide, ["/"])
+      .replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, `<script type="application/ld+json">${JSON.stringify(document)}</script>`)
+      .replace(`<h1>${escapeHtml(guide.title)}</h1>`, `<header class="article__header"><dl><div><dt>Author</dt><dd data-structured-author-id="${resolved.authorAttribution!.id}">Guide Author</dd></div></dl></header><h1>${escapeHtml(guide.title)}</h1>`);
+    const htmlByRoute = new Map([
+      [home.route, validHtml(home, [guide.route])],
+      [guide.route, guideHtml],
+    ]);
+    expect(collectBuildHtmlAuditErrors({ config, pages: [home, guide], htmlByRoute })).toEqual([]);
+  });
+
+  it("rejects additional-script identity injection and mismatched visible author", () => {
+    const home = getPageByRoute("/");
+    const guide = enabledPageCatalog.find((page) => page.pageId === "guide.getting-started")!;
+    const config = defineGameConfig({
+      ...siteConfig,
+      identity: { articles: { [guide.pageId]: { author: {
+        identity: { kind: "Person", name: "Guide Author", projectConfirmed: true, evidenceRef: "entity:author" },
+        evidenceRef: "role:author",
+      } } } },
+    });
+    const resolved = resolveStructuredIdentity(config, guide);
+    const document = { "@context": "https://schema.org", "@graph": [...buildBaseSeoGraph(config, guide), buildArticleSchema(config, guide)] };
+    const baseGuideHtml = validHtml(guide, ["/"])
+      .replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, `<script type="application/ld+json">${JSON.stringify(document)}</script>`)
+      .replace(`<h1>${escapeHtml(guide.title)}</h1>`, `<header class="article__header"><dl><div><dt>Author</dt><dd data-structured-author-id="${resolved.authorAttribution!.id}">Guide Author</dd></div></dl></header><h1>${escapeHtml(guide.title)}</h1>`);
+    const injected = baseGuideHtml.replace("</head>", '<script type="application/ld+json">{"@type":"Person","@id":"https://gameatlas.example/#identity-injected","name":"Injected"}</script></head>');
+    const mismatch = baseGuideHtml.replace(">Guide Author</dd>", ">Wrong Author</dd>");
+    const hidden = baseGuideHtml.replace(
+      '<div><dt>Author</dt><dd data-structured-author-id=',
+      '<div hidden><dt>Author</dt><dd data-structured-author-id=',
+    );
+    for (const [html, expected] of [
+      [injected, /unconfigured controlled identity/i],
+      [mismatch, /visible author attribution/i],
+      [hidden, /must not be explicitly hidden/i],
+    ] as const) {
+      const errors = collectBuildHtmlAuditErrors({
+        config, pages: [home, guide],
+        htmlByRoute: new Map([[home.route, validHtml(home, [guide.route])], [guide.route, html]]),
+      }).join("\n");
+      expect(errors).toMatch(expected);
+    }
   });
 
   it("collects only local build assets referenced by HTML", () => {

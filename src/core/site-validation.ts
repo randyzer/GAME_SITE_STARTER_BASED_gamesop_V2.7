@@ -155,6 +155,19 @@ export function collectSiteValidationErrors(input: SiteValidationInput) {
     }
   }
 
+  for (const pageId of Object.keys(input.config.identity?.articles ?? {})) {
+    const page = inventoryByPageId.get(pageId);
+    if (!page) {
+      errors.push(`Identity config references unknown article pageId "${pageId}".`);
+      continue;
+    }
+    if (!["guide", "meta", "patch"].includes(page.pageType)) {
+      errors.push(
+        `Identity config pageId "${pageId}" uses non-Article page type "${page.pageType}".`,
+      );
+    }
+  }
+
   for (const page of input.inventory) {
     errors.push(...collectPageCapabilityErrors(page));
 

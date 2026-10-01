@@ -7,6 +7,7 @@ import {
   buildBreadcrumbSchema,
   buildBreadcrumbTrail,
   buildCanonicalUrl,
+  resolveStructuredIdentity,
 } from "../../core/seo";
 import type { PageInventoryEntry } from "../../data/schemas/page-inventory";
 import { mediaCatalog } from "../../data/media/catalog";
@@ -60,6 +61,7 @@ const structuredData = [
   buildBreadcrumbSchema(canonical, breadcrumbTrail),
   buildArticleSchema(siteConfig, page),
 ];
+const authorAttribution = resolveStructuredIdentity(siteConfig, page).authorAttribution;
 ---
 
 <BaseLayout page={page} structuredData={structuredData}>
@@ -91,6 +93,12 @@ const structuredData = [
             <div>
               <dt>Last verified</dt>
               <dd><time datetime={lastVerified}>{lastVerified}</time></dd>
+            </div>
+          )}
+          {authorAttribution && (
+            <div>
+              <dt>Author</dt>
+              <dd data-structured-author-id={authorAttribution.id}>{authorAttribution.name}</dd>
             </div>
           )}
         </dl>
