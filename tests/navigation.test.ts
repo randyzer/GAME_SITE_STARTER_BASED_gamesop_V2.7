@@ -64,6 +64,16 @@ describe("navigation presentation boundary", () => {
     );
   });
 
+  it("adds local progressive enhancement without replacing native disclosure state", () => {
+    const mobile = source(mobileUrl);
+    expect(mobile).toContain('<script is:inline>');
+    expect(mobile).toContain('event.key !== "Escape"');
+    expect(mobile).toContain('details[open]');
+    expect(mobile).toContain('disclosure.open = false');
+    expect(mobile).toContain('matchMedia("(max-width: 900px)")');
+    expect(mobile).not.toMatch(/aria-expanded=|role="menu"|keydown.*(?:Enter|Space)/);
+  });
+
   it("keeps long mobile navigation inside the viewport", () => {
     const styles = source(globalStylesUrl);
     const panelRule = styles.match(/\.mobile-nav__panel\s*\{([^}]*)\}/)?.[1];
