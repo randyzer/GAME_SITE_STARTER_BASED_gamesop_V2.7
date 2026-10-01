@@ -157,6 +157,12 @@ export const gameConfigSchema = z
       })
       .strict(),
     identity: identityConfigSchema.optional(),
+    residueSentinels: z.array(z.object({
+      id: z.string().trim().min(1).refine((id) => !id.startsWith("core."), "Core sentinel IDs are reserved."),
+      literal: z.string().trim().min(1),
+      surface: z.enum(["branding", "url", "public-text"]),
+    }).strict()).refine((entries) => new Set(entries.map((entry) => entry.id)).size === entries.length,
+      "Sentinel IDs must be unique.").optional(),
     navigation: navigationSchema,
     homepage: z
       .object({

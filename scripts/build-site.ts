@@ -93,7 +93,8 @@ export function runBuild({
   }
 
   const runner = runCommand ?? ((command: BuildCommand) => defaultCommandRunner(projectRoot, command));
-  const commands = [preflightFor(purpose), ...TECHNICAL_BUILD_STAGES];
+  const commands = [preflightFor(purpose), ...TECHNICAL_BUILD_STAGES.map((command) =>
+    command.name === "Generated output audit" ? { ...command, args: [...command.args, "--purpose", purpose] } : command)];
   for (const command of commands) {
     const status = runner(command);
     if (status !== 0) return status;

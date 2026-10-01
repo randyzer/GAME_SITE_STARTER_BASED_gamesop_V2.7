@@ -1,6 +1,6 @@
+import { createCoreBuildFixture, adoptFixtureConfig } from "./helpers/core-build-fixture";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -56,22 +56,10 @@ const mediaBuildNavigation = resolveNavigationGroups(
 );
 
 beforeAll(() => {
-  fixtureRoot = mkdtempSync(join(tmpdir(), "starter-media-build-"));
-  for (const file of ["src", "public", "scripts", "game.config.ts", "astro.config.ts", "tsconfig.json", "package.json", "package-lock.json"]) {
-    cpSync(resolve(projectRoot, file), join(fixtureRoot, file), { recursive: true });
-  }
-  symlinkSync(resolve(projectRoot, "node_modules"), join(fixtureRoot, "node_modules"), "dir");
-  const astroConfigPath = join(fixtureRoot, "astro.config.ts");
-  writeFileSync(
-    astroConfigPath,
-    readFileSync(astroConfigPath, "utf8").replace(
-      'output: "static",',
-      'cacheDir: "./.astro-cache",\n  output: "static",',
-    ),
-  );
+  fixtureRoot = createCoreBuildFixture();
   writeFileSync(
     join(fixtureRoot, "game.config.ts"),
-    `import { defineGameConfig } from "./src/config/schema";\n\nexport default defineGameConfig(${JSON.stringify(mediaBuildConfig, null, 2)});\n`,
+    `import { defineGameConfig } from "./src/config/schema";\n\nexport default defineGameConfig(${JSON.stringify(adoptFixtureConfig(mediaBuildConfig), null, 2)});\n`,
   );
   writeFileSync(join(fixtureRoot, "src/data/media/media.json"), JSON.stringify(mediaFixture));
   for (const file of ["qa-overview.svg", "qa-detail.svg"]) {

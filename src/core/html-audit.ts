@@ -20,7 +20,7 @@ interface HtmlPageAnalysis {
   internalRoutes: string[];
 }
 
-function decodeHtml(value: string): string {
+export function decodeHtml(value: string): string {
   const entities: Record<string, string> = {
     "&amp;": "&",
     "&lt;": "<",
@@ -28,14 +28,23 @@ function decodeHtml(value: string): string {
     "&quot;": '"',
     "&#39;": "'",
     "&#x27;": "'",
+    "&nbsp;": " ",
+    "&apos;": "'",
   };
   return value.replace(
-    /&(amp|lt|gt|quot|#39|#x27);/gi,
-    (entity) => entities[entity.toLocaleLowerCase("en")] ?? entity,
+    /&(amp|lt|gt|quot|nbsp|apos|#\d+|#x[0-9a-f]+);/gi,
+    (entity: string) => {
+      const known = entities[entity.toLocaleLowerCase("en")];
+      if (known !== undefined) return known;
+      const numeric = entity.slice(2, -1);
+      const code = numeric[0]?.toLowerCase() === "x" ? Number.parseInt(numeric.slice(1), 16) : Number(numeric);
+      return code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff)
+        ? String.fromCodePoint(code) : "\uFFFD";
+    },
   );
 }
 
-function attributesFromTag(tag: string): Map<string, string> {
+export function attributesFromTag(tag: string): Map<string, string> {
   const attributes = new Map<string, string>();
   const pattern = /([:\w-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
   for (const match of tag.matchAll(pattern)) {

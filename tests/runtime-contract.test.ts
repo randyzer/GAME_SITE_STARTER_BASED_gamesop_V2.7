@@ -7,7 +7,7 @@ const activeDocs = [
   "../docs/CONTENT_AND_DATA_GUIDE.md",
   "../docs/QA_CHECKLIST.md",
   "../docs/DEPLOYMENT.md",
-  "../public/media/README.md",
+  "../docs/media/README.md",
 ] as const;
 
 function read(path: string): string {

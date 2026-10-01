@@ -1,4 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
+import { collectSourceResidueSignals } from "./core-safety-sentinels";
+import { collectCopiedTextResidueSignals } from "./residue-artifacts";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -157,7 +159,14 @@ const validationErrors = collectSiteValidationErrors({
     "planner",
   ],
 });
-const errors = [...readErrors, ...validationErrors];
+const enabledPages = buildEnabledPageCatalog(gameConfig, inventory, legalContent);
+const residueSignals = collectSourceResidueSignals({ config: gameConfig, pages: enabledPages,
+  contentEntries, legalContent, purpose });
+warnings.push(...residueSignals.warnings);
+const copiedText = collectCopiedTextResidueSignals({ publicDirectory: resolve(projectRoot, "public"),
+  readDirectory: resolve(projectRoot, "public"), config: gameConfig, mediaAssets: mediaManifest.assets, purpose });
+warnings.push(...copiedText.warnings);
+const errors = [...readErrors, ...validationErrors, ...residueSignals.errors, ...copiedText.errors];
 
 if (errors.length > 0) {
   console.error("Site validation failed:");
@@ -168,7 +177,6 @@ if (errors.length > 0) {
   for (const item of info) console.info(`Info: ${item}`);
   return 1;
 } else {
-  const enabledPages = buildEnabledPageCatalog(gameConfig, inventory, legalContent);
   console.log(
     `Site validation passed: ${enabledPages.length} enabled pages, ${contentEntries.length} content entries.`,
   );

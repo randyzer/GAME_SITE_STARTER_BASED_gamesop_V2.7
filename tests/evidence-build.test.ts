@@ -1,17 +1,14 @@
+import { createCoreBuildFixture } from "./helpers/core-build-fixture";
 import { spawnSync } from "node:child_process";
 import {
-  cpSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
-  symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -34,7 +31,6 @@ const blockRow = approvedRow.replace("| APPROVED |", "| BLOCK |");
 const unsupportedRow = approvedRow.replace("| INTEGRATED |", "| NOT INTEGRATED |");
 
 let fixtureRoot: string;
-const projectRoot = process.cwd();
 
 function table(row: string): string {
   return `${canonicalHeader}\n${separator}\n${row}\n`;
@@ -64,28 +60,8 @@ function collectFiles(directory: string): string[] {
 }
 
 beforeAll(() => {
-  fixtureRoot = mkdtempSync(join(tmpdir(), "starter-evidence-build-"));
-  for (const file of [
-    "src",
-    "public",
-    "scripts",
-    "game.config.ts",
-    "astro.config.ts",
-    "tsconfig.json",
-    "package.json",
-    "package-lock.json",
-  ]) {
-    cpSync(resolve(projectRoot, file), join(fixtureRoot, file), { recursive: true });
-  }
-  symlinkSync(resolve(projectRoot, "node_modules"), join(fixtureRoot, "node_modules"), "dir");
-  const astroConfigPath = join(fixtureRoot, "astro.config.ts");
-  writeFileSync(
-    astroConfigPath,
-    readFileSync(astroConfigPath, "utf8").replace(
-      'output: "static",',
-      'cacheDir: "./.astro-cache",\n  output: "static",',
-    ),
-  );
+  fixtureRoot = createCoreBuildFixture();
+
 });
 
 afterAll(() => {
@@ -115,8 +91,10 @@ describe("shared final/evidence build contract", () => {
       log: () => undefined,
     })).toBe(0);
 
-    expect(finalCalls.slice(1)).toEqual(TECHNICAL_BUILD_STAGES);
-    expect(evidenceCalls.slice(1)).toEqual(TECHNICAL_BUILD_STAGES);
+    expect(finalCalls.slice(1, -1)).toEqual(TECHNICAL_BUILD_STAGES.slice(0, -1));
+    expect(evidenceCalls.slice(1, -1)).toEqual(TECHNICAL_BUILD_STAGES.slice(0, -1));
+    expect(finalCalls.at(-1)?.args).toEqual(["scripts/audit-build.ts", "--purpose", "final"]);
+    expect(evidenceCalls.at(-1)?.args).toEqual(["scripts/audit-build.ts", "--purpose", "evidence"]);
 
     const stopped: string[] = [];
     const failure = runBuild({

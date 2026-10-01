@@ -253,7 +253,7 @@ implementation-local heuristic, not a universal size limit. `sourceUrl` records
 provenance only; it is not proof of copyright or reuse permission. Human/SOP
 review owns rights, privacy, appropriateness, and visual quality.
 
-See `public/media/README.md` for path, alt, caption, YouTube, and validation
+See `docs/media/README.md` for path, alt, caption, YouTube, and validation
 details.
 
 ## Theme and page-family identity

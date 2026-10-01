@@ -5,12 +5,12 @@ const currentPatchFiles = [
   "../README.md",
   "../docs/QA_CHECKLIST.md",
   "../docs/CONTENT_AND_DATA_GUIDE.md",
-  "../public/media/README.md",
+  "../docs/media/README.md",
 ] as const;
 
 const carriedForwardBaselineDocs = [
   "../docs/CONTENT_AND_DATA_GUIDE.md",
-  "../public/media/README.md",
+  "../docs/media/README.md",
 ] as const;
 
 function read(path: string): string {

@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { defineGameConfig } from "../src/config/schema";
 import { pageInventory, siteConfig } from "../src/core/site-data";
 import {
+  adoptFixtureConfig,
   cleanupCoreBuildFixture,
   createCoreBuildFixture,
   runFixtureNpm,
@@ -17,7 +18,7 @@ import {
 let fixtureRoot: string;
 const guide = pageInventory.find((page) => page.pageId === "guide.getting-started")!;
 const identityConfig = defineGameConfig({
-  ...siteConfig,
+  ...adoptFixtureConfig(siteConfig),
   identity: {
     sitePublisher: {
       identity: { kind: "Organization", name: "Site Publisher", projectConfirmed: true, evidenceRef: "entity:site-publisher" },

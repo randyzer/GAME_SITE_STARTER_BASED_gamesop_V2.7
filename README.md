@@ -56,6 +56,13 @@ while preserving the Starter 2.0 architecture baseline recorded in
 
 ## Requirements and first build
 
+This Phase A candidate adds PP-02 production residue safety. The unadopted
+example intentionally fails `validate` and `build`: replace the example brand,
+domain, enabled inventory copy/sources, About copy, setup article and SVG logo
+before producing final output. `build:evidence` can warn on ordinary sample
+branding/domain only; setup instructions and legal template text still fail.
+See [the PP-02 adoption contract](docs/PP02_PRODUCTION_RESIDUE.md).
+
 - Node.js `22.22.0` from `.nvmrc`
 - npm with lockfile support
 
@@ -199,7 +206,7 @@ Build audit may emit a non-blocking advisory for unusually large local video
 files. The advisory is an implementation-local heuristic, not a universal byte
 limit; project budgets and observed delivery behavior remain authoritative.
 
-See [`public/media/README.md`](public/media/README.md) for the exact contract.
+See [`docs/media/README.md`](docs/media/README.md) for the exact contract.
 
 ### Page-family accents
 

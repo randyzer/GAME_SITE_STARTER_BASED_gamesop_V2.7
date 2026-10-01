@@ -148,6 +148,16 @@ interface PagefindMetadataReferences {
   filters: string[];
 }
 
+export function readPagefindCbor(source: Uint8Array): CborValue {
+  const compressed = Buffer.from(source);
+  const decoded = compressed[0] === 0x1f && compressed[1] === 0x8b ? gunzipSync(compressed) : compressed;
+  if (decoded.subarray(0, 12).toString("utf8") !== "pagefind_dcd") throw new Error("missing pagefind_dcd signature");
+  const reader = new CborReader(decoded.subarray(12));
+  const value = reader.readValue();
+  if (!reader.complete) throw new Error("unexpected trailing CBOR data");
+  return value;
+}
+
 function parseMetadataReferences(
   source: Uint8Array | undefined,
   locale: string,

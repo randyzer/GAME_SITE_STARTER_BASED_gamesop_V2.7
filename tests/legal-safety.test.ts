@@ -1,8 +1,8 @@
+import { createCoreBuildFixture } from "./helpers/core-build-fixture";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -24,10 +24,11 @@ const content: LegalContentPayload = {
   notice: "Synthetic fixture notice.",
 };
 
-function activePage(pageType: "privacy" | "terms" = "privacy"): PageInventoryEntry {
+function activePage(pageType: "privacy" | "terms" = "privacy", title?: string): PageInventoryEntry {
   const page = parsePageInventory(inventoryData).find((entry) => entry.pageType === pageType)!;
   return {
     ...page,
+    title: title ?? page.title,
     visibility: "public",
     publicationStatus: "published",
     publishedAt: "2026-09-01",
@@ -35,7 +36,7 @@ function activePage(pageType: "privacy" | "terms" = "privacy"): PageInventoryEnt
     developmentStatus: "ready",
     needsReview: false,
     needsUpdate: false,
-    legalActivation: { state: "active", approvedContentSha256: computeLegalContentSha256(page.title, content) },
+    legalActivation: { state: "active", approvedContentSha256: computeLegalContentSha256(title ?? page.title, content) },
   };
 }
 
@@ -248,17 +249,11 @@ describe("TL-01 actual static route output", () => {
     { active: ["terms"], index: ["terms"] },
     { active: ["privacy", "terms"], index: ["privacy"] },
   ])("renders approved payload and projects only eligible routes: %j", ({ active, index }) => {
-    const root = mkdtempSync(join(tmpdir(), "starter-tl01-build-"));
+    const root = createCoreBuildFixture("starter-tl01-build-");
     try {
-      for (const path of ["src", "public", "scripts", "game.config.ts", "astro.config.ts", "tsconfig.json", "package.json", "package-lock.json"]) {
-        cpSync(resolve(path), join(root, path), { recursive: true });
-      }
-      symlinkSync(resolve("node_modules"), join(root, "node_modules"), "dir");
-      const configPath = join(root, "astro.config.ts");
-      writeFileSync(configPath, readFileSync(configPath, "utf8").replace('output: "static",', 'cacheDir: "./.astro-cache",\n  output: "static",'));
       const payloads = Object.fromEntries(active.map((pageType) => [pageType, content]));
-      const inventory = parsePageInventory(inventoryData).map((page) => active.includes(page.pageType)
-        ? { ...activePage(page.pageType as "privacy" | "terms"), indexability: index.includes(page.pageType) ? "index" as const : "noindex" as const }
+      const inventory = parsePageInventory(JSON.parse(readFileSync(join(root, "src/data/page-inventory.json"), "utf8"))).map((page) => active.includes(page.pageType)
+        ? { ...activePage(page.pageType as "privacy" | "terms", page.title), sources: page.sources, indexability: index.includes(page.pageType) ? "index" as const : "noindex" as const }
         : page);
       writeFileSync(join(root, "src/data/page-inventory.json"), JSON.stringify(inventory));
       writeFileSync(join(root, "src/data/legal-content.ts"), `export const legalContent = ${JSON.stringify(payloads)};\n`);

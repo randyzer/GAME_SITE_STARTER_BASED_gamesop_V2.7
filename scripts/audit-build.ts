@@ -5,7 +5,9 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { collectBuildHtmlAuditErrors, collectReferencedAssetPaths } from "../src/core/html-audit";
+import { collectBuildHtmlAuditErrors, collectReferencedAssetPaths, decodeHtml } from "../src/core/html-audit";
+import { projectHtmlResidueSurfaces, scanResidueSurfaces, type ResidueSurface } from "./core-safety-sentinels";
+import { collectCopiedTextResidueSignals, collectPagefindResidueSignals } from "./residue-artifacts";
 import { routeToOutputFile } from "../src/core/output-reconciliation";
 import {
   collectPagefindBudgetErrors,
@@ -33,6 +35,10 @@ import {
 import { EVIDENCE_MARKER_FILE } from "./build-site";
 
 const outputDirectory = resolve(process.cwd(), "dist");
+const purposeArgs = process.argv.slice(2);
+const purpose = purposeArgs.length === 0 || JSON.stringify(purposeArgs) === JSON.stringify(["--purpose", "final"])
+  ? "final" : JSON.stringify(purposeArgs) === JSON.stringify(["--purpose", "evidence"]) ? "evidence" : undefined;
+if (!purpose) throw new Error("Usage: tsx scripts/audit-build.ts [--purpose final|evidence]");
 const htmlByRoute = new Map(
   enabledPageCatalog.map((page) => [
     page.route,
@@ -48,6 +54,17 @@ if (existsSync(resolve(process.cwd(), EVIDENCE_MARKER_FILE))) {
   errors.push(`Canonical final output must not contain ${EVIDENCE_MARKER_FILE}.`);
 }
 const warnings: string[] = [];
+const residueSurfaces: ResidueSurface[] = [];
+const expectedRoutes = enabledPageCatalog.map(({ route }) => `route:${route}`);
+const checkedRoutes: ResidueSurface[] = [];
+for (const page of enabledPageCatalog) {
+  try {
+    residueSurfaces.push(...projectHtmlResidueSurfaces(page.route, htmlByRoute.get(page.route)!));
+    checkedRoutes.push({ id: `route:${page.route}`, scope: "public-text", text: "" });
+  } catch (error) { errors.push(`PP-02 required HTML projection unreadable: ${page.route}: ${String(error)}.`); }
+}
+const routeCoverage = scanResidueSurfaces(checkedRoutes, expectedRoutes, purpose);
+errors.push(...routeCoverage.errors);
 
 function assetSize(assetPath: string): number {
   const path = join(outputDirectory, assetPath.replace(/^\//, ""));
@@ -145,6 +162,22 @@ for (const file of requiredFiles) {
   }
 }
 
+const expectedDocuments = ["robots.txt", "sitemap-index.xml", "sitemap-0.xml"].flatMap((path) =>
+  ["public-text", "url"].map((scope) => `document:${path}:${scope}`));
+const documentSurfaces: ResidueSurface[] = [];
+for (const path of ["robots.txt", "sitemap-index.xml", "sitemap-0.xml"]) {
+  try {
+    const text = decodeHtml(new TextDecoder("utf-8", { fatal: true }).decode(readFileSync(join(outputDirectory, path))));
+    for (const scope of ["public-text", "url"] as const) documentSurfaces.push({ id: `document:${path}:${scope}`, scope, text });
+  } catch (error) { errors.push(`PP-02 required document unreadable: ${path}: ${String(error)}.`); }
+}
+const documents = scanResidueSurfaces(documentSurfaces, expectedDocuments, purpose, siteConfig.residueSentinels);
+const htmlResidue = scanResidueSurfaces(residueSurfaces, residueSurfaces.map(({ id }) => id), purpose, siteConfig.residueSentinels);
+const copiedText = collectCopiedTextResidueSignals({ publicDirectory: resolve(process.cwd(), "public"),
+  readDirectory: outputDirectory, config: siteConfig, mediaAssets: mediaCatalog.assets, purpose });
+errors.push(...documents.errors, ...htmlResidue.errors, ...copiedText.errors);
+warnings.push(...documents.warnings, ...htmlResidue.warnings, ...copiedText.warnings);
+
 const robotsPath = join(outputDirectory, "robots.txt");
 if (
   existsSync(robotsPath) &&
@@ -175,6 +208,9 @@ try {
     installedVersion: readInstalledPagefindVersion(process.cwd()),
   });
   errors.push(...pagefindReport.errors, ...collectPagefindBudgetErrors(pagefindReport));
+  const pagefindResidue = collectPagefindResidueSignals({ directory: pagefindDirectory, report: pagefindReport, config: siteConfig, purpose });
+  errors.push(...pagefindResidue.errors);
+  warnings.push(...pagefindResidue.warnings);
   pagefindDiagnostics = formatPagefindDiagnostics(pagefindReport, pagefindReport.rawTotalBytes, 0);
 } catch (error) {
   errors.push(`Pagefind artifact audit could not run: ${error instanceof Error ? error.message : String(error)}`);
@@ -190,6 +226,7 @@ const referencedCssBytes = [...referencedAssets]
 if (errors.length > 0) {
   console.error("Generated build audit failed:");
   for (const error of errors) console.error(`- ${error}`);
+  for (const warning of warnings) console.warn(warning);
   process.exitCode = 1;
 } else {
   console.log(

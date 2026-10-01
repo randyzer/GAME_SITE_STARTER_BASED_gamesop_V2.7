@@ -11,7 +11,9 @@ describe("readContentEntriesFromDirectory", () => {
       new URL("../src/content/guides", import.meta.url),
     );
 
-    expect(readContentEntriesFromDirectory(guideDirectory, "guides")).toEqual(
+    const entries = readContentEntriesFromDirectory(guideDirectory, "guides");
+    expect(entries.every((entry) => typeof entry.body === "string" && !entry.body.startsWith("---"))).toBe(true);
+    expect(entries.map(({ body, ...entry }) => entry)).toEqual(
       pageInventory
         .flatMap((page) =>
           page.contentRef?.collection === "guides"

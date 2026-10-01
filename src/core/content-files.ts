@@ -42,12 +42,14 @@ export function readContentEntriesFromDirectory(
       .split(sep)
       .join("/")
       .slice(0, -extension.length);
-    const pageId = extractPageId(readFileSync(filePath, "utf8"), filePath);
+    const source = readFileSync(filePath, "utf8");
+    const pageId = extractPageId(source, filePath);
 
     return {
       collection,
       id,
       data: { pageId },
+      body: source.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, ""),
     };
   });
 }
