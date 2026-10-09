@@ -1,19 +1,18 @@
-# GAME_SITE_STARTER_BASED_gamesop2.7 — V2.7 Candidate
+# GAME_SITE_STARTER_BASED_gamesop_V2.7 — V2.7 Candidate
 
 ## V2.7 GitHub checkout
 
-- SOP: [randyzer/GAME_SOP_2.7](https://github.com/randyzer/GAME_SOP_2.7)
+- SOP: [randyzer/GAME_SOP_V2.7](https://github.com/randyzer/GAME_SOP_V2.7)
 - Master Prompt: [randyzer/GAME_CODEX_MASTER_PROMPT_V2.7](https://github.com/randyzer/GAME_CODEX_MASTER_PROMPT_V2.7)
-- Starter: [randyzer/GAME_SITE_STARTER_BASED_gamesop2.7](https://github.com/randyzer/GAME_SITE_STARTER_BASED_gamesop2.7)
+- Starter: [randyzer/GAME_SITE_STARTER_BASED_gamesop_V2.7](https://github.com/randyzer/GAME_SITE_STARTER_BASED_gamesop_V2.7)
 
-Clone the three repositories into the same parent directory using these local
-names. The SOP GitHub name follows the existing `GAME_SOP_2.6.5` convention;
-its explicit local name preserves the sibling paths used by Starter and Prompt.
+Clone the three repositories into the same parent directory using these explicit
+local names to preserve the sibling paths used by Starter and Prompt.
 
 ```sh
-git clone https://github.com/randyzer/GAME_SOP_2.7.git GAME_SOP_V2.7
+git clone https://github.com/randyzer/GAME_SOP_V2.7.git GAME_SOP_V2.7
 git clone https://github.com/randyzer/GAME_CODEX_MASTER_PROMPT_V2.7.git GAME_CODEX_MASTER_PROMPT_V2.7
-git clone https://github.com/randyzer/GAME_SITE_STARTER_BASED_gamesop2.7.git GAME_SITE_STARTER_BASED_gamesop2.7
+git clone https://github.com/randyzer/GAME_SITE_STARTER_BASED_gamesop_V2.7.git GAME_SITE_STARTER_BASED_gamesop2.7
 ```
 
 Cross-repository relative document links assume this local layout. Use the SOP
