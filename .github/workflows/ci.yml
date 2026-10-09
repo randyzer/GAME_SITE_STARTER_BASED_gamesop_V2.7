@@ -28,5 +28,16 @@ jobs:
       - name: Check types and tests
         run: npm run check
 
-      - name: Build and audit static output
-        run: npm run build
+      - name: Assert unadopted final rejection
+        run: npm run verify:unadopted-final
+
+      - name: Validate, check and build neutral adoption
+        run: npm run verify:adopted-final
+
+      - name: Install browser engines
+        run: npm exec -- playwright install --with-deps chromium firefox webkit
+
+      - name: Verify Core browser evidence
+        run: npm run check:browser
+        env:
+          CORE_BROWSER_CONTRACT_MODE: PINNED_REFERENCE

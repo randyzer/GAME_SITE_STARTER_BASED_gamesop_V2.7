@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Fictional lantern budget comparison</title>
+  <desc id="desc">Quantity multiplied by unit value. Three lanterns at four QA units cost twelve; five cost twenty. Excludes relay supplies.</desc>
+  <rect width="1200" height="675" fill="#f6f0df"/>
+  <g font-family="sans-serif" fill="#203b3f" text-anchor="middle">
+    <text x="600" y="80" font-size="38">Choose a quantity. Keep the same unit value.</text>
+    <text x="600" y="135" font-size="25">Fictional Amber Lantern cost: 4 QA units</text>
+    <g fill="#e9c679" stroke="#203b3f" stroke-width="3">
+      <rect x="90" y="210" width="450" height="235" rx="14"/><rect x="660" y="210" width="450" height="235" rx="14"/>
+    </g>
+    <text x="315" y="280" font-size="34">3 lanterns × 4</text><text x="315" y="375" font-size="54">12 QA units</text>
+    <text x="885" y="280" font-size="34">5 lanterns × 4</text><text x="885" y="375" font-size="54">20 QA units</text>
+    <text x="600" y="510" font-size="29">Two extra lanterns add 8 fictional units</text>
+    <text x="600" y="565" font-size="22">Excludes Relay Cells and other supplies · QA relay rules v1</text>
+    <text x="600" y="625" font-size="21">Original synthetic QA diagram — not real-game prices</text>
+  </g>
+</svg>

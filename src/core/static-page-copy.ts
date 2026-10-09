@@ -14,8 +14,6 @@ const reviewNotice =
 
 const staticPageCopy = {
   about: {
-    intro:
-      "Game Atlas is a reusable editorial system for answering game questions with less noise and clearer evidence.",
     sections: [
       {
         heading: "Sources before claims",
@@ -87,11 +85,14 @@ const staticPageCopy = {
       },
     ],
   },
-} satisfies Record<StaticPageType, StaticPageCopy>;
+};
 
-export function getStaticPageCopy(pageType: StaticPageType): StaticPageCopy {
+export function getStaticPageCopy(pageType: StaticPageType, projectIntro?: string): StaticPageCopy {
   if (pageType !== "about") {
     throw new Error("Legal pages require explicitly approved project legal content; starter copy is not renderable.");
   }
-  return staticPageCopy.about;
+  if (!projectIntro?.trim()) {
+    throw new Error("About pages require a non-empty project intro.");
+  }
+  return { ...staticPageCopy.about, intro: projectIntro.trim() };
 }

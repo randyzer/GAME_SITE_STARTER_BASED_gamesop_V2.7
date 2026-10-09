@@ -20,7 +20,16 @@ function read(path: string): string {
 }
 
 describe("release identity", () => {
-  it("uses the exact V2.6.5 patch-line identity without mutable lifecycle claims", () => {
+  it("records V2.7 development lineage separately from preserved historical releases", () => {
+    const source = read("../README.md");
+    expect(source).toContain("V2.7 WS-02 development lineage");
+    expect(source).toContain("b067e8d4050478072f25a1dc78a8526cdd128cfd");
+    expect(source).toContain("v2.7/evolution");
+    expect(source).toContain("1ff2bd01a089975c6b22bff48ca71faffe2be9c710d0123afd3ae47acc7ac24c");
+    expect(source).toContain("working-tree candidate is not a V2.7 release");
+    expect(source).toContain("synthetic technical evidence");
+  });
+  it("keeps current Candidate identity distinct from historical patch-line claims", () => {
     for (const path of currentPatchFiles) {
       const source = read(path);
       expect(source).not.toMatch(/^# .*v2\.5\.0/m);
@@ -28,15 +37,31 @@ describe("release identity", () => {
       expect(source).not.toMatch(/`GAME_SOP v2\.5` is the production methodology/);
       expect(source).not.toMatch(/Record the `GAME_SOP v2\.5` commit used for production methodology/);
       expect(source).not.toMatch(/fit satisfy `GAME_SOP v2\.5`/);
-      expect(source).toMatch(/\b(?:GAME_SITE_STARTER|Starter) v2\.6\.5\b/i);
-      expect(source).toMatch(/GAME_SOP v2\.6\.5\b/);
-      expect(source).toMatch(/documentation-correction patch line/i);
       expect(source).not.toMatch(/implementation candidate/i);
       expect(source).not.toMatch(/not yet implemented|not implemented yet/i);
       expect(source).not.toMatch(/IMPLEMENTATION COMPLETE|final Human PASS/i);
       expect(source).not.toMatch(
-        /under preparation|preparing release|unreleased|not released|release pending|not tagged|untagged|tag pending|not frozen|freeze pending|awaiting freeze/i,
+        /\bV2\.7 (?:is |has been )?(?:released|tagged|frozen|approved)\b|\b(?:released|tagged|frozen|approved) V2\.7\b|starter-v2\.7/i,
       );
+
+      if (path === "../README.md" || path === "../docs/QA_CHECKLIST.md") {
+        expect(source).toMatch(/^# GAME_SITE_STARTER V2\.7 Candidate(?: QA Checklist)?$/m);
+        if (path === "../README.md") {
+          expect(source).toContain("not a released or production-approved package");
+          expect(source).toMatch(/Inherited V2\.6\.5 documentation-correction patch line/i);
+          expect(source).toMatch(/GAME_SOP v2\.6\.5\b/);
+        } else {
+          expect(source).toContain("Candidate is not release identity");
+          expect(source).toMatch(/V2\.6\.5 defines the lifecycle-state corrective patch line/i);
+        }
+      } else {
+        expect(source).toMatch(/\b(?:GAME_SITE_STARTER|Starter) v2\.6\.5\b/i);
+        expect(source).toMatch(/GAME_SOP v2\.6\.5\b/);
+        expect(source).toMatch(/documentation-correction patch line/i);
+        expect(source).not.toMatch(
+          /under preparation|preparing release|unreleased|not released|release pending|not tagged|untagged|tag pending|not frozen|freeze pending|awaiting freeze/i,
+        );
+      }
     }
   });
 

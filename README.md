@@ -1,4 +1,69 @@
-# GAME_SITE_STARTER v2.6.5 Documentation-Correction Patch Line
+# GAME_SITE_STARTER_BASED_gamesop2.7 — V2.7 Candidate
+
+## V2.7 GitHub checkout
+
+- SOP: [randyzer/GAME_SOP_2.7](https://github.com/randyzer/GAME_SOP_2.7)
+- Master Prompt: [randyzer/GAME_CODEX_MASTER_PROMPT_V2.7](https://github.com/randyzer/GAME_CODEX_MASTER_PROMPT_V2.7)
+- Starter: [randyzer/GAME_SITE_STARTER_BASED_gamesop2.7](https://github.com/randyzer/GAME_SITE_STARTER_BASED_gamesop2.7)
+
+Clone the three repositories into the same parent directory using these local
+names. The SOP GitHub name follows the existing `GAME_SOP_2.6.5` convention;
+its explicit local name preserves the sibling paths used by Starter and Prompt.
+
+```sh
+git clone https://github.com/randyzer/GAME_SOP_2.7.git GAME_SOP_V2.7
+git clone https://github.com/randyzer/GAME_CODEX_MASTER_PROMPT_V2.7.git GAME_CODEX_MASTER_PROMPT_V2.7
+git clone https://github.com/randyzer/GAME_SITE_STARTER_BASED_gamesop2.7.git GAME_SITE_STARTER_BASED_gamesop2.7
+```
+
+Cross-repository relative document links assume this local layout. Use the SOP
+GitHub link above when reading it online. These repositories publish the V2.7
+Candidate source; pushing commits does not grant product or release acceptance.
+
+## Current adoption entry
+
+This is a working V2.7 Candidate, not a released or production-approved package.
+Use the reviewed working source, including uncommitted files, rather than HEAD
+alone. Record the selected Starter, SOP and Master Prompt identities together.
+The inherited release/tag history below is provenance, not current acceptance.
+
+- Starter supplies the reusable technical Core and existing components.
+- SOP owns the sole Product Contract and the project/adoption method.
+- Master Prompt enforces that method; it does not create another authority.
+
+Follow the [current SOP execution interpretation](../GAME_SOP_V2.7/docs/NEW_GAME_SITE_SOP_v2.7.md#v27-current-execution-interpretation)
+and [this QA checklist](docs/QA_CHECKLIST.md#v27-evidence-levels-and-input-preflight).
+Reuse one Core; put game choices in the existing Config, Inventory, content,
+facts/tools, theme and Media Manifest inputs. Verify first-party game sources
+before writing factual claims. Source access, publication, update and recorded
+patch/version are distinct; an access date never proves game currency or rights.
+
+Game Adaptation is a lightweight project decision method, not runtime config.
+Wiki / Hub, Task Guide and Media-rich Article use direct existing MDX/component
+composition. An answer, ordered steps or manual next action can be ordinary
+content; dedicated QuickAnswer/Steps/NextStep components are not implied.
+Do not add a Pattern ID, registry, dispatcher, page builder or duplicated authority.
+
+Qualify the unchanged default source separately from an adopted project's inputs.
+Default-fixture failures in an adopted copy remain FAIL and require scoped
+diagnosis; source-only PASS never becomes adopted `npm run check` PASS. Final
+adoption still requires its own validate/check/canonical build and applicable
+independent gates. `build:evidence` produces marked non-final output only.
+
+A reserved `.example` origin is an evidence identity, not an owned/live domain.
+Check actual preview links separately: absolute canonical-origin breadcrumbs do
+not prove usable local navigation. Production needs an authorized owned origin
+and exact-build canonical, sitemap, robots and live-link checks.
+
+Use the pinned runtime and lockfile with `npm ci` in a clean owned copy. Temporary
+external `node_modules` links are development aids, not deliverable dependencies;
+exclude modules, secrets, caches and generated output from a source package.
+Human visual/game recognition, media/no-media suitability, rights, operator/legal,
+applicable advertising, assembled accessibility and representative real Safari
+review remain independent obligations. A bounded technical build is not a
+commercially complete site or release permission.
+
+## Inherited V2.6.5 documentation-correction patch line
 
 Starter v2.6.5 defines the lifecycle-state corrective patch line for
 the static-first Astro foundation for media-rich game wikis. Release status is determined by
@@ -53,6 +118,39 @@ The current package carries forward the approved Starter v2.5.0 scope in
 [`docs/STARTER_V2.5_CHANGE_PROPOSAL.md`](docs/STARTER_V2.5_CHANGE_PROPOSAL.md)
 while preserving the Starter 2.0 architecture baseline recorded in
 [`docs/STARTER_2.0_ARCHITECTURE_PROPOSAL.md`](docs/STARTER_2.0_ARCHITECTURE_PROPOSAL.md).
+
+## V2.7 WS-02 development lineage
+
+This working-tree candidate is not a V2.7 release. Development branch
+`v2.7/evolution` inherits accepted A3 commit
+`b067e8d4050478072f25a1dc78a8526cdd128cfd`, tree
+`1df0ade30b1eaf51a76820c8d8b83337786f0dc1`, preserving S1/A1/A2/A3.
+The historical release provenance above remains intact. The V2.7 Product Contract
+is owned by GAME_SOP at `docs/COMMERCIAL_GAME_SITE_PRODUCT_CONTRACT_V2.7.md`,
+SHA-256 `1ff2bd01a089975c6b22bff48ca71faffe2be9c710d0123afd3ae47acc7ac24c`.
+Changed working-tree files need exact hashes alongside the inherited HEAD.
+
+Game Atlas is an intentionally unadopted example. Local reusable-Core verification:
+
+```bash
+npm run check
+npm run verify:unadopted-final
+npm run verify:adopted-final
+```
+
+The first verifier asserts that isolated default validation and final build fail
+specifically because of PP-02. Its success proves expected rejection. The second
+uses the existing Field Notes neutral adoption in a disposable complete project,
+running actual `npm run validate`, `npm run check` and `npm run build`; it verifies
+no evidence marker or unapproved legal routes. Both clean up their copies and
+leave the canonical source untouched. This is synthetic technical evidence,
+not real-game, human, media-rights or legal approval. AX-01 browser evidence
+remains pending WS-06A; WS-03D search obligations and REF/project adoption remain
+separate. CI runs the same two gates after the root check.
+
+Real projects still require their own adopted `validate`, `check`, canonical
+final `build` and applicable independent human/browser gates. `build:evidence`
+cannot satisfy final acceptance. No new dependency is introduced by these tools.
 
 ## Requirements and first build
 
@@ -119,8 +217,9 @@ The implementation uses:
 
 ## Adopt for a real game
 
-1. Record the source Starter commit, `GAME_SOP v2.6.5` package/reference, and
-   current Master Prompt version in the new project's brief.
+1. Record the selected V2.7 Starter working source, exact SOP package/reference,
+   and Master Prompt identity in the new project's brief, including changed-file
+   hashes alongside inherited commits. Do not infer a release from a filename.
 2. Complete the SOP research and human planning gates before changing page
    scope. The Starter does not decide whether a game needs heroes, tier lists,
    maps, tools, or any other content family.
@@ -218,6 +317,40 @@ unconfigured family falls back to `--color-accent`.
 Components must not invent keys such as `beginner-guides`, `early-game`, or
 `hero-detail`.
 
+### Site-wide semantic visual roles
+
+`game.config.ts` may explicitly select the supported `visualRoles` as optional
+preset/compatibility helpers, not a long-term Game Adaptation model:
+
+```ts
+visualRoles: {
+  font: "interface",       // editorial | interface
+  density: "compact",     // comfortable | compact
+  shape: "soft",          // square | soft
+  state: "quiet",         // lifted | quiet
+},
+```
+
+Omitting the whole object preserves the existing `editorial / comfortable /
+square / lifted` fallback. An authored object must specify all four roles;
+unknown values, partial objects and arbitrary CSS/font/unit/override fields are
+rejected. The config remains unconfigured in this Starter. Fallback compatibility
+is not project approval of game identity or visual fidelity.
+
+`src/core/theme-roles.ts` resolves validated choices to four immutable identifiers.
+BaseLayout binds them on `html[data-theme-*]`; `theme.css` owns their semantic
+font, density, shape and decorative hover tokens, and `global.css` consumes those
+tokens. Fonts use local/system stacks; no remote font loading is added. Compact
+controls stay at least44px; quiet removes decorative lift/shadow while retaining
+hover feedback. Focus visibility, current/open semantics, keyboard behavior and
+reduced-motion safeguards cannot be configured through these roles.
+
+`body[data-page-family]` still comes only from Inventory `module` and
+`page-families.css` still maps only `--page-accent`. Roles are site-wide project
+choices, never inferred from route, page type, genre, name or logo. A real game
+needs recorded visual evidence, a decision owner and later human visual review;
+a valid role object or synthetic browser profile does not supply that evidence.
+
 ### Wiki Portal homepage and FAQ
 
 The homepage has a fixed portal composition. It derives featured/start pages,
@@ -300,3 +433,29 @@ advertising, legal copy, and the final human release decision.
 
 No analytics, telemetry, accounts, database, CMS, ad scripts, or automatic
 content/media selection are included by default.
+
+## Core browser evidence (WS-06A)
+
+The dev-only `npm run check:browser` verifies 47 required cases against one final-built disposable Field Notes adoption using real Chromium, Firefox and WebKit. Install pinned dependencies and `npm exec -- playwright install chromium firefox webkit` first. See [Core browser evidence](docs/CORE_BROWSER_EVIDENCE.md) for matrix, Contract input, evidence output and fail-closed behavior. This adds to root check and both WS-02 adoption gates. It proves Core technical behavior only; manual visual/contrast, composed pages, real-game adoption and release remain separate. Browser results never populate capability outcomes automatically.
+
+
+## V2.7 WS03D search boundary
+
+This bounded search slice keeps `features.search` as the sole technical activation flag. The Core `SearchProvider` interface returns public `SearchResult[]`; completed outcomes distinguish results, empty and error. Pagefind remains the current implementation behind `pagefind-search-adapter.ts`, including its existing first20-hit and safe local result normalization. The UI owns form/history, request identity, loading and rendering; idle does not require provider loading and says “Local site search,” never claiming an unavailable index is online. Older requests cannot overwrite newer submissions.
+
+Pagefind1.5.2, the800000-byte normalized payload budget, required artifact contract and optional UI deletion policy remain fixed. Optional UI reference safety inspects both finite runtime source files: SearchIsland and the Pagefind adapter. References in either file block normalization. No alternate provider, remote service, ranking feature, analytics or query logging is introduced.
+
+Each adopting project must record its search decision outside Core config:
+
+- Decision: ENABLED or DISABLED.
+- Rationale and corpus/task basis, with a named decision owner and evidence reference.
+- The technical `features.search` value must agree with that decision. No duplicate activation boolean and no invented corpus-size claims.
+- Enabled search requires actual result/empty/error browser evidence and useful local results; a working provider alone does not prove that search should be enabled.
+- Disabled search requires no search route/UI and no navigation targeting the excluded page. Pagefind build artifacts need not disappear in this slice.
+
+Mechanism/state evidence does not establish ranking quality, real-player demand,
+corpus usefulness or project decision appropriateness. Actual project decisions
+belong to Adaptation/Acceptance. Recorded dates/version and dynamic-label
+provenance retain separate truth requirements. Applicable Safari, assembled
+accessibility, Human and release decisions require their own evidence; a working
+search mechanism does not promote capability outcomes.

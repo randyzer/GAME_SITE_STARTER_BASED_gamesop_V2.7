@@ -114,6 +114,13 @@ export const pageInventoryEntrySchema = z
         path: ["legalActivation"],
       });
     }
+    if (entry.publishedAt && entry.updatedAt < entry.publishedAt) {
+      context.addIssue({
+        code: "custom",
+        message: "updatedAt must not precede publishedAt.",
+        path: ["updatedAt"],
+      });
+    }
     if (
       entry.visibility === "public" &&
       entry.publicationStatus === "published" &&

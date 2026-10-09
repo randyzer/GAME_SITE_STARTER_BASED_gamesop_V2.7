@@ -4,25 +4,30 @@ import {
   findAffectedPageIds,
   parsePatchImpactArgs,
 } from "../src/core/patch-impact";
-import { pageInventory } from "../src/core/site-data";
+import { parsePageInventory } from "../src/data/schemas/page-inventory";
+
+
+// Impact analysis examples are test inputs, not required adoption facts or pages.
+const base = {
+  priority: 90, visibility: "public", publicationStatus: "published", contentStatus: "ready",
+  developmentStatus: "ready", needsReview: false, needsUpdate: false, indexability: "index",
+  publishedAt: "2026-08-10", updatedAt: "2026-09-20", tags: ["testing"], relatedPageIds: [], confidence: "high",
+  sources: [{ sourceUrl: "https://example.com/qa-patch-impact", sourceType: "editorial", accessedAt: "2026-09-21",
+    evidenceNote: "Synthetic editorial source for direct and related entity impact tests." }],
+};
+const [heroPage, guidePage] = parsePageInventory([
+  { ...base, pageId: "hero.demo-sentinel", route: "/heroes/demo-sentinel/", pageType: "hero",
+    cluster: "heroes", module: "heroes", feature: "heroes", title: "Synthetic Patch Impact Hero",
+    description: "Synthetic direct entity consumer for testing affected page detection without mutating state.",
+    primaryKeyword: "synthetic patch hero", entityRef: { entityType: "hero", entityId: "demo-sentinel" }, relatedEntityRefs: [] },
+  { ...base, pageId: "guide.hero-counter", route: "/guides/hero-counter/", pageType: "guide",
+    cluster: "guides", module: "guides", feature: "guides", title: "Synthetic Entity Counter Guide",
+    description: "Synthetic related entity consumer for testing indirect impact and preserving workflow state.",
+    primaryKeyword: "demo hero counter", relatedEntityRefs: [{ entityType: "hero", entityId: "demo-sentinel" }] },
+]);
 
 describe("findAffectedPageIds", () => {
   it("finds direct and related entity consumers without mutating workflow state", () => {
-    const heroPage = pageInventory.find(
-      (page) => page.pageId === "hero.demo-sentinel",
-    );
-    if (!heroPage) {
-      throw new Error("Expected demo hero inventory fixture.");
-    }
-    const guidePage = {
-      ...pageInventory.find((page) => page.pageId === "guide.getting-started")!,
-      pageId: "guide.hero-counter",
-      route: "/guides/hero-counter/",
-      primaryKeyword: "demo hero counter",
-      relatedEntityRefs: [
-        { entityType: "hero" as const, entityId: "demo-sentinel" },
-      ],
-    };
     const before = {
       updatedAt: guidePage.updatedAt,
       needsUpdate: guidePage.needsUpdate,

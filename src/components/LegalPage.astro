@@ -12,7 +12,7 @@ interface Props {
 
 const { page, copyType, kicker } = Astro.props;
 if (copyType !== page.pageType) throw new Error(`Static copy type does not match page "${page.pageId}".`);
-const aboutCopy = copyType === "about" ? getStaticPageCopy("about") : undefined;
+const aboutCopy = copyType === "about" ? getStaticPageCopy("about", page.description) : undefined;
 const legalCopy = aboutCopy ? undefined : getLegalPageContent(page);
 const copy = aboutCopy ?? legalCopy!;
 const notice = legalCopy?.notice ?? aboutCopy?.reviewNotice;

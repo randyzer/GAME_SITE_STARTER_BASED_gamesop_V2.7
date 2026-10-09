@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import WikiArticle from "../src/components/wiki/WikiArticle.astro";
 import EntityDetail from "../src/components/EntityDetail.astro";
 import GuidesRoute from "../src/pages/guides/[...slug].astro";
-import { pageInventory } from "../src/core/site-data";
+import { parsePageInventory } from "../src/data/schemas/page-inventory";
 import { collectMediaHtmlErrors } from "../scripts/media-validation";
 
 type AstroComponent = Parameters<AstroContainer["renderToString"]>[0];
@@ -13,6 +13,8 @@ const components = import.meta.glob<{ default: AstroComponent }>("../src/compone
 const image = {
   id: "qa.overview",
   type: "image" as const,
+  dimensions: { width: 1200, height: 675 },
+  rightsRef: "private/qa-image",
   src: "/media/qa-overview.svg",
   alt: "Synthetic terrain overview with a route across three checkpoints",
   caption: "Synthetic QA fixture — not a screenshot from a real game.",
@@ -21,6 +23,9 @@ const image = {
 const video = {
   id: "qa.trailer",
   type: "video" as const,
+  dimensions: { width: 800, height: 600 },
+  rightsRef: "private/qa-video",
+  accessibleEquivalent: { kind: "text" as const, text: "A synthetic route crosses three checkpoints." },
   src: "aqz-KE-bpKQ",
   alt: "Big Buck Bunny test trailer",
   caption: "Public test video used only to inspect the embed layout.",
@@ -32,10 +37,25 @@ const localVideo = {
   src: "/media/qa-trailer.mp4",
   poster: "/media/qa-poster.webp",
 };
-const page = pageInventory.find(
-  (entry) => entry.pageId === "guide.getting-started",
-)!;
-const hubPage = pageInventory.find((entry) => entry.pageId === "hub.guides")!;
+// Shell rendering cases own their pages independently of adopted game content.
+const base = {
+  cluster: "guides", module: "guides", feature: "guides", priority: 90,
+  visibility: "public", publicationStatus: "published", contentStatus: "ready",
+  developmentStatus: "ready", needsReview: false, needsUpdate: false, indexability: "index",
+  publishedAt: "2026-08-10", updatedAt: "2026-09-20", tags: ["testing"],
+  relatedPageIds: [], relatedEntityRefs: [], confidence: "high",
+  sources: [{ sourceUrl: "https://example.com/qa-media-shell", sourceType: "editorial", accessedAt: "2026-09-21",
+    evidenceNote: "Synthetic editorial source for media shell rendering tests, not game media approval." }],
+};
+const [page, hubPage] = parsePageInventory([
+  { ...base, pageId: "guide.qa-media-shell", route: "/guides/qa-media-shell/", pageType: "guide",
+    title: "Synthetic Media Shell Test Guide", primaryKeyword: "synthetic media shell guide",
+    description: "Synthetic guide input for optional media placements, source rendering and body headings.",
+    contentRef: { collection: "guides", slug: "qa-media-shell" } },
+  { ...base, pageId: "hub.qa-media-shell", route: "/guides/", pageType: "hub",
+    title: "Synthetic Media Shell Guide Hub", primaryKeyword: "synthetic media shell hub",
+    description: "Synthetic hub input for hero-only media treatment and guide article navigation." },
+]);
 
 async function renderMedia(name: string, props: Record<string, unknown>) {
   const load = components[`../src/components/media/${name}.astro`];
@@ -46,10 +66,10 @@ async function renderMedia(name: string, props: Record<string, unknown>) {
 }
 
 describe("rendered media primitives", () => {
-  it("defines intrinsic image flow, responsive gallery and 16:9 iframe sizing", () => {
+  it("defines intrinsic image flow, responsive gallery and authored-ratio iframe sizing", () => {
     const css = readFileSync(new URL("../src/styles/global.css", import.meta.url), "utf8");
     expect(css).toMatch(/\.game-media img\s*\{[^}]*width:\s*100%;[^}]*height:\s*auto;/);
-    expect(css).toMatch(/\.video-embed\s*\{[^}]*aspect-ratio:\s*16\s*\/\s*9;/);
+    expect(css).toMatch(/\.video-embed\s*\{[^}]*aspect-ratio:\s*var\(--media-aspect-ratio\);/);
     expect(css).toMatch(/\.video-embed iframe\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%;/);
     expect(css).toMatch(/\.screenshot-gallery\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,/);
   });
@@ -64,10 +84,12 @@ describe("rendered media primitives", () => {
     expect(html).toContain('class="game-media');
   });
 
-  it("loads a hero eagerly without adding dimension metadata", async () => {
+  it("loads a hero eagerly with intrinsic dimensions and without srcset variants", async () => {
     const html = await renderMedia("GameMedia", { asset: image, eager: true });
     expect(html).toContain('loading="eager"');
-    expect(html).not.toMatch(/\b(?:width|height|srcset)="/);
+    expect(html).toContain('width="1200"');
+    expect(html).toContain('height="675"');
+    expect(html).not.toMatch(/\bsrcset="/);
   });
 
   it("renders decorative images with an explicit empty alt", async () => {
@@ -244,5 +266,36 @@ describe("optional media in existing page shells", () => {
     expect(plain).not.toMatch(/data-media-placement|class="game-media|<iframe\b/);
     expect(rich.match(/data-media-placement="/g)).toHaveLength(3);
     expect(rich).not.toMatch(/mediaSlot|placementName|routeOwnership|pageBuilder/i);
+  });
+});
+
+describe("WS03B public media rendering", () => {
+  it("reserves intrinsic image dimensions and exposes credit without evidence pointers", async () => {
+    const asset = { ...image, dimensions: { width: 800, height: 600 }, rightsRef: "private/qa-image", credit: { text: "QA illustrator", url: "https://example.com/credit" } };
+    const html = await renderMedia("GameMedia", { asset });
+    expect(html).toContain('width="800"');
+    expect(html).toContain('height="600"');
+    expect(html).toContain("QA illustrator");
+    expect(html).toContain('href="https://example.com/credit"');
+    expect(html).not.toContain(asset.rightsRef);
+    expect(html).not.toContain("rightsRef");
+    expect(collectMediaHtmlErrors(html.replace('width="800"', 'width="1"'), [asset], () => true).join(" ")).toMatch(/dimension/i);
+  });
+  it.each([video, localVideo])("derives video ratio and always exposes equivalent information: $id", async base => {
+    const asset = { ...base, dimensions: { width: 800, height: 600 }, rightsRef: "private/qa-video", accessibleEquivalent: { kind: "text" as const, text: "A rabbit explores a synthetic landscape." } };
+    const html = await renderMedia("VideoEmbed", { asset });
+    expect(html).toContain("--media-aspect-ratio: 800 / 600");
+    expect(html).toContain(asset.accessibleEquivalent.text);
+    expect(html).toContain(`href="${asset.sourceUrl}"`);
+    expect(html).not.toContain(asset.rightsRef);
+    expect(collectMediaHtmlErrors(html.replace(asset.accessibleEquivalent.text, ""), [asset], () => true).join(" ")).toMatch(/equivalent/i);
+  });
+  it("escapes equivalent and credit text and renders a safe transcript link", async () => {
+    const asset = { ...video, dimensions: { width: 800, height: 600 }, rightsRef: "private/qa-video", credit: { text: "<b>Author</b>" }, accessibleEquivalent: { kind: "link" as const, label: "<b>Transcript</b>", href: "/guides/getting-started/" } };
+    const html = await renderMedia("VideoEmbed", { asset });
+    expect(html).toContain("&lt;b&gt;Transcript&lt;/b&gt;");
+    expect(html).toContain("&lt;b&gt;Author&lt;/b&gt;");
+    expect(html).not.toContain("<b>");
+    expect(html).toContain('href="/guides/getting-started/"');
   });
 });

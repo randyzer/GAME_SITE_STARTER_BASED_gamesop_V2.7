@@ -9,14 +9,18 @@
   "scripts": {
     "dev": "astro dev",
     "validate": "tsx scripts/validate-site.ts",
+    "verify:unadopted-final": "tsx scripts/verify-adoption.ts unadopted",
+    "verify:adopted-final": "tsx scripts/verify-adoption.ts adopted",
     "check": "astro check && vitest run",
+    "check:browser": "tsx scripts/run-core-browser-evidence.ts",
     "build": "tsx scripts/build-site.ts final",
     "build:evidence": "tsx scripts/build-site.ts evidence",
     "deploy:dry-run": "npm run build && wrangler deploy --dry-run",
     "patch:impact": "tsx scripts/patch-impact.ts",
     "preview": "astro preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "verify:browser-closure": "tsx scripts/verify-ws06a-browser-closure.ts"
   },
   "dependencies": {
     "@astrojs/mdx": "8.0.0",
@@ -33,10 +37,11 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "pagefind": "1.5.2",
+    "playwright": "1.63.0",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.13",
     "typescript": "6.0.3",
     "vitest": "4.1.11",
-    "wrangler": "4.127.1"
+    "wrangler": "4.149.0"
   }
 }

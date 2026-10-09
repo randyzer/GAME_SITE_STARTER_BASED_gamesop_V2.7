@@ -12,8 +12,24 @@ import {
   type MediaReadinessPurpose,
   type MediaReadinessSignals,
 } from "../src/core/media-readiness";
-import { pageInventory } from "../src/core/site-data";
-import type { PageInventoryEntry } from "../src/data/schemas/page-inventory";
+import { pageInventoryEntrySchema, type PageInventoryEntry } from "../src/data/schemas/page-inventory";
+
+// Decision-table unit fixtures belong to this suite, not the adopted game's inventory.
+const home = pageInventoryEntrySchema.parse({
+  pageId: "home", route: "/", pageType: "home", cluster: "core", module: "core", priority: 100,
+  visibility: "public", publicationStatus: "published", contentStatus: "ready",
+  developmentStatus: "ready", needsReview: false, needsUpdate: false, indexability: "index",
+  title: "Synthetic Media Readiness Home",
+  description: "Synthetic unit-test home for media lifecycle, rights and Human review boundary checks.",
+  publishedAt: "2026-09-01", updatedAt: "2026-09-01", primaryKeyword: "synthetic media home",
+  tags: ["testing"], relatedPageIds: [], relatedEntityRefs: [], confidence: "high",
+  sources: [{ sourceUrl: "https://example.com/qa-media", sourceType: "editorial", accessedAt: "2026-09-01", evidenceNote: "Synthetic unit-test provenance" }],
+});
+const pageInventory = [home, pageInventoryEntrySchema.parse({
+  ...home, pageId: "guide.getting-started", route: "/guides/getting-started/", pageType: "guide",
+  cluster: "guides", module: "guides", feature: "guides", priority: 90,
+  title: "Synthetic Media Readiness Guide", primaryKeyword: "synthetic media guide",
+})];
 
 const validRows = {
   homeResolved:

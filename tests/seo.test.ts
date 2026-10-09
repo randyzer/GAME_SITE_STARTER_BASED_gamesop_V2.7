@@ -18,12 +18,18 @@ import {
   pageInventory,
   siteConfig,
 } from "../src/core/site-data";
+import { pageInventoryEntrySchema } from "../src/data/schemas/page-inventory";
 
 const homePage = pageInventory.find((page) => page.pageId === "home")!;
 const guideHub = pageInventory.find((page) => page.pageId === "hub.guides")!;
-const guidePage = pageInventory.find(
-  (page) => page.pageId === "guide.getting-started",
-)!;
+const guidePage = pageInventoryEntrySchema.parse({
+  ...homePage,
+  pageId: "guide.qa-seo", route: "/guides/qa-seo/", pageType: "guide",
+  cluster: "guides", module: "guides", feature: "guides",
+  title: "Synthetic Structured Identity Guide",
+  description: "Synthetic unit-test guide for canonical, breadcrumb and controlled structured identity checks.",
+  primaryKeyword: "synthetic seo guide", relatedPageIds: [], relatedEntityRefs: [],
+});
 const guideCatalog = [homePage, guideHub, guidePage];
 
 describe("technical SEO helpers", () => {
@@ -179,7 +185,8 @@ describe("technical SEO helpers", () => {
     const injected = structuredClone(valid);
     (injected["@graph"] as unknown[]).push({ "@type": "Person", "@id": "https://gameatlas.example/#identity-unapproved", name: "Injected" });
     expect(collectStructuredIdentityErrors(config, guidePage, [injected]).join("\n")).toMatch(/unconfigured controlled identity/i);
-    expect(collectStructuredIdentityErrors(siteConfig, guidePage, [{ "@id": "https://gameatlas.example/#organization" }]).join("\n")).toMatch(/dangling|legacy/i);
+    const legacyOrganizationId = `${buildCanonicalUrl(siteConfig, "/")}#organization`;
+    expect(collectStructuredIdentityErrors(siteConfig, guidePage, [{ "@id": legacyOrganizationId }]).join("\n")).toMatch(/dangling|legacy/i);
   });
 
   it("deduplicates explicitly identical identities and keeps entity IDs independent from role evidence", () => {
@@ -247,4 +254,15 @@ describe("technical SEO helpers", () => {
     expect(collectStructuredIdentityErrors(config, guidePage, [valid, duplicateIdentity]).join("\n")).toMatch(/exactly once/i);
   });
 
+});
+
+
+it("formats resolved share media as a narrow public HTTPS metadata payload", async () => {
+  const module = await import("../src/core/seo");
+  const resolve = Reflect.get(module, "resolveShareMetadata") as (config: typeof siteConfig, image?: unknown) => unknown;
+  expect(resolve).toBeTypeOf("function");
+  const image = { id: "qa.share", type: "image", src: "/media/share.svg", alt: "A synthetic blue share illustration", dimensions: { width: 1200, height: 630 }, rightsRef: "private/qa-share", sourceUrl: "https://example.com/qa-source", credit: { text: "QA author" } };
+  expect(resolve(siteConfig, image)).toEqual({ url: new URL(image.src, siteConfig.site.url).href, width: 1200, height: 630, alt: image.alt });
+  expect(resolve(siteConfig, undefined)).toBeUndefined();
+  expect(JSON.stringify(resolve(siteConfig, image))).not.toMatch(/rightsRef|sourceUrl|credit|private\/qa-share/);
 });

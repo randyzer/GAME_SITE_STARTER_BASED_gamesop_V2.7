@@ -1,25 +1,110 @@
 import { spawnSync } from "node:child_process";
 import { gzipSync } from "node:zlib";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { fileURLToPath } from "node:url";
 
 import gameConfig from "../game.config";
 import { gameConfigSchema } from "../src/config/schema";
-import { CORE_SENTINELS, projectHtmlResidueSurfaces, scanResidueSurfaces } from "../scripts/core-safety-sentinels";
+import { CORE_SENTINELS, collectSourceResidueSignals, projectHtmlResidueSurfaces, scanResidueSurfaces } from "../scripts/core-safety-sentinels";
+import pageInventory from "../src/data/page-inventory.json";
+import { parsePageInventory } from "../src/data/schemas/page-inventory";
 import { collectCopiedTextResidueSignals, projectPagefindResidueSurfaces } from "../scripts/residue-artifacts";
-import { adoptFixtureConfig, createCoreBuildFixture, cleanupCoreBuildFixture } from "./helpers/core-build-fixture";
+import { runSiteValidation } from "../scripts/validate-site";
+import { collectMediaReadinessSignals, findMediaDecisionTable, parseMediaDecisionTableMarkdown } from "../src/core/media-readiness";
+import { adoptFixtureConfig, createCoreBuildFixture, cleanupCoreBuildFixture, runFixtureNpm, writeFixtureGameConfigSource } from "./helpers/core-build-fixture";
 
 describe("PP-02 adoption boundary", () => {
-  it("rejects the unadopted shipped example in final validation", () => {
+  it("keeps adopted fixture About Core byte-identical to the source", () => {
+    const root = createCoreBuildFixture("starter-about-portability-");
+    try {
+      const source = fileURLToPath(new URL("../src/core/static-page-copy.ts", import.meta.url));
+      expect(readFileSync(join(root, "src/core/static-page-copy.ts"))).toEqual(readFileSync(source));
+    } finally { cleanupCoreBuildFixture(root); }
+  });
+
+  it("scans project-owned About copy without injecting a Starter intro", () => {
+    const config = adoptFixtureConfig(gameConfig);
+    const inventory = parsePageInventory(pageInventory);
+    const original = inventory.find((page) => page.pageType === "about")!;
+    const about = {
+      ...original,
+      title: "About Field Notes Editorial",
+      description: "Field Notes publishes independent reference articles with documented sources and corrections.",
+      sources: original.sources.map((source) => ({
+        ...source,
+        sourceUrl: "https://field-notes.example/about/",
+        evidenceNote: "Synthetic project editorial scope used for the About adoption regression.",
+      })),
+    };
+    const scan = (description: string) => collectSourceResidueSignals({
+      config, pages: [{ ...about, description }], contentEntries: [], legalContent: {}, purpose: "final",
+    });
+    expect(scan(about.description).errors).toEqual([]);
+    const oldIntro = CORE_SENTINELS.find((entry) => entry.id === "core.about-intro")!.literal;
+    expect(scan(oldIntro).errors).toContain("PP-02 core.about-intro residue on page:about:copy.");
+  });
+
+  it("validates the explicit shipped or adopted project state without bypassing PP-02", () => {
+    const root = createCoreBuildFixture("starter-pp02-validation-");
+    try {
+      const source = readFileSync(join(root, "game.config.ts"), "utf8");
+      const serialized = source.match(/^import \{ defineGameConfig \} from "\.\/src\/config\/schema";\n\nexport default defineGameConfig\((\{[\s\S]*\})\);\n$/);
+      expect(serialized).not.toBeNull();
+      const fixtureConfig = gameConfigSchema.parse(JSON.parse(serialized![1]));
+      expect(fixtureConfig.brand.name).toBe("Field Notes");
+      expect(fixtureConfig.site.url).toBe("https://field-notes.example");
+      const adopted = runFixtureNpm(root, "validate");
+      expect(adopted.error).toBeUndefined();
+      expect(adopted.status, `${adopted.stdout}\n${adopted.stderr}`).toBe(0);
+
+      // Own the negative input rather than treating every real adoption as unadopted.
+      const unadopted = gameConfigSchema.parse({
+        ...fixtureConfig,
+        brand: { ...fixtureConfig.brand, name: "Game Atlas" },
+        site: { ...fixtureConfig.site, url: "https://gameatlas.example" },
+      });
+      writeFixtureGameConfigSource(root, JSON.stringify(unadopted, null, 2));
+      const rejected = runFixtureNpm(root, "validate");
+      expect(rejected.error).toBeUndefined();
+      expect(rejected.status, `${rejected.stdout}\n${rejected.stderr}`).toBe(1);
+      expect(`${rejected.stdout}\n${rejected.stderr}`).toMatch(/PP-02/);
+      expect(`${rejected.stdout}\n${rejected.stderr}`).toMatch(/core.brand residue/);
+      expect(`${rejected.stdout}\n${rejected.stderr}`).toMatch(/core.domain residue/);
+    } finally { cleanupCoreBuildFixture(root); }
+
+    // Check the CLI against the existing final validator for the actual inputs.
+    const diagnostics: string[] = [];
+    const spies = (["error", "warn", "info", "log"] as const).map((method) =>
+      vi.spyOn(console, method).mockImplementation((...args) => { diagnostics.push(args.join(" ")); }),
+    );
+    let expectedStatus: number;
+    try { expectedStatus = runSiteValidation(); }
+    finally { for (const spy of spies) spy.mockRestore(); }
     const result = spawnSync("npm", ["run", "validate"], {
       encoding: "utf8",
       env: { ...process.env, NODE_ENV: "production" },
       timeout: 30_000,
     });
     expect(result.error).toBeUndefined();
-    expect(result.status, `${result.stdout}\n${result.stderr}`).not.toBe(0);
-    expect(`${result.stdout}\n${result.stderr}`).toMatch(/PP-02/);
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(expectedStatus);
+    for (const diagnostic of diagnostics) {
+      expect(`${result.stdout}\n${result.stderr}`).toContain(diagnostic);
+    }
+    const decisionTable = findMediaDecisionTable(process.cwd());
+    expect(decisionTable.errors).toEqual([]);
+    if (decisionTable.path) {
+      const decisions = parseMediaDecisionTableMarkdown(readFileSync(decisionTable.path, "utf8"));
+      expect(decisions.errors).toEqual([]);
+      const readiness = collectMediaReadinessSignals({
+        inventory: parsePageInventory(pageInventory), decisions: decisions.decisions, purpose: "final",
+      });
+      if (readiness.errors.length > 0) {
+        expect(result.status).toBe(1);
+        for (const error of readiness.errors) expect(`${result.stdout}\n${result.stderr}`).toContain(error);
+      }
+    }
   });
 
   it("accepts only additive literals in predefined scopes", () => {
@@ -122,8 +207,13 @@ describe("PP-02 closed literal catalog", () => {
     const root = createCoreBuildFixture("starter-pp02-media-quote-");
     try {
       writeFileSync(join(root, "public/media/quote.svg"), '<svg xmlns="http://www.w3.org/2000/svg"><text>Game Atlas is quoted as a reference.</text></svg>');
+      const manifest = JSON.parse(readFileSync(join(root, "src/data/media/media.json"), "utf8")) as { assets: Array<{ src: string; poster?: string }> };
+      const source = readFileSync(join(root, "game.config.ts"), "utf8");
+      const serialized = source.match(/^import \{ defineGameConfig \} from "\.\/src\/config\/schema";\n\nexport default defineGameConfig\((\{[\s\S]*\})\);\n$/);
+      expect(serialized).not.toBeNull();
+      const fixtureConfig = gameConfigSchema.parse(JSON.parse(serialized![1]));
       const result = collectCopiedTextResidueSignals({ publicDirectory: join(root, "public"), readDirectory: join(root, "public"),
-        config: adoptFixtureConfig(gameConfig), mediaAssets: [{ src: "/media/quote.svg" }], purpose: "final" });
+        config: fixtureConfig, mediaAssets: [...manifest.assets, { src: "/media/quote.svg" }], purpose: "final" });
       expect(result.errors).toEqual([]);
     } finally { cleanupCoreBuildFixture(root); }
   });

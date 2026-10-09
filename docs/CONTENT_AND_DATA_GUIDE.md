@@ -46,7 +46,7 @@ Do **not** add any of the following to Inventory:
 - article body or layout blocks;
 - `heroImage`, gallery items, YouTube IDs, captions, or media slots;
 - FAQ questions/answers;
-- component state, mobile/desktop image variants, image dimensions/crops;
+- component state, mobile/desktop image variants, image crop policies;
 - presentation-only QuickFacts labels;
 - arbitrary page-family/color keys;
 - homepage section definitions.
@@ -204,14 +204,19 @@ iframe URL.
       "src": "/media/opening-route.webp",
       "alt": "The marked path from the camp to the first objective",
       "caption": "Follow the north path after leaving camp.",
-      "sourceUrl": "https://example.com/original-source"
+      "sourceUrl": "https://example.com/original-source",
+      "dimensions": { "width": 1200, "height": 675 },
+      "rightsRef": "RESEARCH_SOURCES.md#opening-route-rights"
     },
     {
       "id": "official-trailer",
       "type": "video",
       "src": "abcdefghijk",
       "alt": "Official game trailer",
-      "sourceUrl": "https://www.youtube.com/watch?v=abcdefghijk"
+      "sourceUrl": "https://www.youtube.com/watch?v=abcdefghijk",
+      "dimensions": { "width": 1280, "height": 720 },
+      "rightsRef": "RESEARCH_SOURCES.md#official-trailer-rights",
+      "accessibleEquivalent": { "kind": "link", "label": "Trailer transcript", "href": "/guides/trailer-transcript/" }
     },
     {
       "id": "local-trailer",
@@ -219,9 +224,13 @@ iframe URL.
       "src": "/media/local-trailer.mp4",
       "poster": "/media/local-trailer-poster.webp",
       "alt": "Local gameplay trailer",
-      "sourceUrl": "https://example.com/original-source"
+      "sourceUrl": "https://example.com/original-source",
+      "dimensions": { "width": 1280, "height": 720 },
+      "rightsRef": "RESEARCH_SOURCES.md#local-trailer-rights",
+      "accessibleEquivalent": { "kind": "text", "text": "Describe the information conveyed by the local clip." }
     }
   ],
+  "defaultShare": "opening-route",
   "pages": [
     {
       "pageId": "guide.example-topic",
@@ -245,7 +254,7 @@ rendered on hubs. `StaticWikiPage.astro` is a constrained reusable renderer for
 explicit page inputs and fixed placements. It does not own routing,
 publication, navigation, indexability, or Page Inventory fields.
 
-Remote image `src`, arbitrary iframes, uploaded video services, dimensions/crops,
+Remote image `src`, arbitrary iframes, uploaded video services, crop variants,
 mobile/desktop variants, processing pipelines, transcoding, a generic placement
 DSL, DAM, and CDN abstraction are unsupported. Build audit may print a
 non-blocking advisory for unusually large local videos; this is an
@@ -275,6 +284,39 @@ not create keys from page type, route, tag, cluster, or content label.
 
 If a future reviewed change adds a new Inventory module, update the controlled
 schema, token/fallback decision, selector, and tests together.
+
+### Site-wide semantic visual roles
+
+`game.config.ts` may explicitly select the supported `visualRoles`:
+
+```ts
+visualRoles: {
+  font: "interface",       // editorial | interface
+  density: "compact",     // comfortable | compact
+  shape: "soft",          // square | soft
+  state: "quiet",         // lifted | quiet
+},
+```
+
+Omitting the whole object preserves the existing `editorial / comfortable /
+square / lifted` fallback. An authored object must specify all four roles;
+unknown values, partial objects and arbitrary CSS/font/unit/override fields are
+rejected. The config remains unconfigured in this Starter. Fallback compatibility
+is not project approval of game identity or visual fidelity.
+
+`src/core/theme-roles.ts` resolves validated choices to four immutable identifiers.
+BaseLayout binds them on `html[data-theme-*]`; `theme.css` owns their semantic
+font, density, shape and decorative hover tokens, and `global.css` consumes those
+tokens. Fonts use local/system stacks; no remote font loading is added. Compact
+controls stay at least44px; quiet removes decorative lift/shadow while retaining
+hover feedback. Focus visibility, current/open semantics, keyboard behavior and
+reduced-motion safeguards cannot be configured through these roles.
+
+`body[data-page-family]` still comes only from Inventory `module` and
+`page-families.css` still maps only `--page-accent`. Roles are site-wide project
+choices, never inferred from route, page type, genre, name or logo. A real game
+needs recorded visual evidence, a decision owner and later human visual review;
+a valid role object or synthetic browser profile does not supply that evidence.
 
 ## Wiki Portal homepage
 
@@ -331,3 +373,77 @@ generated HTML, internal links, sitemap, robots, media markup, and budgets.
 Passing automation does not establish factual correctness, content usefulness,
 media quality, legal rights, competitive coverage, or final responsive visual
 quality. Complete the human checks in `docs/QA_CHECKLIST.md` before release.
+
+## WS03B media presentation contract
+
+Populated legacy media records now fail closed until explicitly migrated with
+measured positive integer `dimensions`, a non-empty private `rightsRef`, and a
+video `accessibleEquivalent` (text or a safe local/HTTPS transcript link). Optional
+`credit` is public attribution with non-empty text and an optional HTTPS URL.
+Provenance, attribution and rights approval are separate responsibilities; a
+pointer never changes the SOP lifecycle decision. No title-derived equivalent,
+automatic dimensions, or approval defaults are supplied. Empty manifests and
+unmapped pages continue to render complete text layouts without empty media shells.
+
+The pure media presentation adapter supplies intrinsic image dimensions and video
+ratio from the same explicit metadata. It excludes rights/workflow data from public
+output. Equivalents, captions, credits and source links render as escaped authored
+content; equivalents and sources remain available when YouTube is blocked. Missing
+local assets/posters fail validation. Refer to `docs/media/README.md` for migration
+and bounded schema examples; page placement and Inventory authority are unchanged.
+
+## V2.7 candidate WS03C — share media authority
+
+Sharing references the existing media manifest and ImageAsset schema:
+`defaultShare` is an optional top-level image ID; `pages[].share` is an optional
+page-specific image ID. Both must reference an existing informative local image;
+unknown IDs, video assets and decorative images are rejected. The fixed visual
+placements remain hero/gallery/trailer; share is metadata and creates no body
+figure or `data-media-placement="share"` wrapper.
+
+The catalog resolves `page.share → informative page.hero → defaultShare → none`.
+It never guesses from galleries, filenames, routes or another image registry.
+Page Inventory continues to own page/publication/indexability; no new image field
+is added to Inventory or Game Config. `resolveShareMetadata` formats the selected
+asset as absolute HTTPS URL, width, height and alt only. Private rights references,
+source/credit and approval/workflow metadata are excluded from this public payload.
+
+BaseLayout emits one OG image URL, dimensions and alt plus the matching Twitter
+image/alt and summary_large_image card when resolved. No image metadata or fake
+placeholder is emitted when nothing resolves. The generic empty manifest remains
+structurally valid, but a **final build of an enabled indexable page requires a
+resolved share image**. Missing share media alone does not fail noindex pages.
+The generated audit checks exact values/cardinality and the local output asset;
+missing/conflicting URL/dimensions/alt, duplicate tags or private evidence leaks
+fail the final audit. Evidence-purpose structural output still does not grant
+production acceptance.
+
+For adoption, author and review a suitable local image with measured dimensions,
+descriptive alt, source and private rights evidence, then set a project default
+and/or explicit page share references. Rights and visual suitability remain human
+SOP decisions; valid metadata never supplies approval. Only disposable adopted QA
+fixtures receive synthetic default share media. Production media.json remains
+empty until project material is explicitly authored. No image service, separate
+SEO image registry, processing/provider abstraction, search or freshness feature
+is added by this slice.
+
+This bounded WS03C slice does not establish SEO-02/MC-* capability PASS
+or permit release.
+
+
+## V2.7 WS03D freshness truth
+
+The bounded freshness slice keeps four facts distinct:
+
+- `publishedAt`: first page publication date.
+- `updatedAt`: editorial/content update date; when publication exists it must not be earlier. Invalid ordering is rejected, never swapped or auto-corrected.
+- Fact/tool `patch` or version context: recorded game/content version, independent of dates.
+- Provenance `accessedAt`: when a source was checked/accessed, displayed as “Sources checked”; it does not establish an independent verification event.
+
+`liveStatus / observed-live / not-live` are **DEFERRED**, outside Active V2.7 Core. Do not author `liveStatus` in Page Inventory or move live-state fields into another schema. The strict inventory schema rejects the retired field; no compatibility adapter or replacement live model is provided. Never infer live state from publication status, update date or patch. Do not add verifiedAt or invent real-time telemetry. General provenance evidenceNote privacy rules remain unchanged.
+
+The pure freshness projection exposes publishedAt, updatedAt, sourceCheckedAt and optional versionContext. Source accessedAt projects to sourceCheckedAt, never verifiedAt. Wiki and editorial metadata preserve Published and Last updated separately; source access no longer claims “Last verified”. Static entity facts say “Recorded version”/recorded patch, not an unsupported current-game claim. Existing tool patch/formula wording remains bounded and unchanged. SEO datePublished/dateModified continue to use the original page publication/update authority, never source access.
+
+Latest updates is ordered deterministically by recorded page update date and the existing priority tie-break, with that basis shown adjacent to the title. Future Popular/Trending/Latest/Live labels must state explicit editorial or data provenance. Static labels may not imply telemetry they lack. Page Inventory provides no live-state model. Synthetic freshness rendering proves only the mechanism, never actual game currency or a real project's FR-01/FR-02 outcome.
+
+Actual project observation/evidence appropriateness remains Adaptation/Acceptance work.

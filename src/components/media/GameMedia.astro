@@ -1,5 +1,6 @@
 ---
 import { mediaAssetSchema, type MediaAsset } from "../../data/schemas/media";
+import { resolveMediaPresentation } from "../../core/media-presentation";
 import VideoEmbed from "./VideoEmbed.astro";
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 }
 
 const asset = mediaAssetSchema.parse(Astro.props.asset);
+const presentation = resolveMediaPresentation(asset);
 const { eager = false } = Astro.props;
 ---
 
@@ -15,10 +17,11 @@ const { eager = false } = Astro.props;
   <VideoEmbed asset={asset} />
 ) : (
   <figure class="game-media" data-media-id={asset.id}>
-    <img src={asset.src} alt={asset.alt} loading={eager ? "eager" : "lazy"} decoding="async" />
+    <img src={asset.src} alt={asset.alt} width={presentation.dimensions.width} height={presentation.dimensions.height} loading={eager ? "eager" : "lazy"} decoding="async" />
     <figcaption>
       {asset.caption && <span>{asset.caption}</span>}
-      <a href={asset.sourceUrl} rel="noreferrer">Image source <span aria-hidden="true">↗</span></a>
+      {presentation.publicCredit && <span class="media-credit">{presentation.publicCredit.url ? <a href={presentation.publicCredit.url} rel="noreferrer">{presentation.publicCredit.text}</a> : presentation.publicCredit.text}</span>}
+      <a href={presentation.source.url} rel="noreferrer">{presentation.source.label} <span aria-hidden="true">↗</span></a>
     </figcaption>
   </figure>
 )}

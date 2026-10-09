@@ -1,4 +1,5 @@
 ---
+import { latestSourceAccessedAt } from "../../core/freshness";
 import type { Provenance } from "../../data/schemas/provenance";
 import { projectPublicSources } from "../../core/public-sources";
 
@@ -8,9 +9,7 @@ interface Props {
 
 const { sources } = Astro.props;
 const publicSources = projectPublicSources(sources);
-const lastVerified = [...sources]
-  .sort((left, right) => right.accessedAt.localeCompare(left.accessedAt))
-  .at(0)?.accessedAt;
+const sourceCheckedAt = latestSourceAccessedAt(sources);
 ---
 
 {publicSources.length > 0 && (
@@ -18,9 +17,9 @@ const lastVerified = [...sources]
     <div>
       <p class="eyebrow">Sources & verification</p>
       <h2 id="sources-title">How this page was checked</h2>
-      {lastVerified && (
+      {sourceCheckedAt && (
         <p class="sources__verified">
-          Last verified <time datetime={lastVerified}>{lastVerified}</time>
+          Sources checked <time datetime={sourceCheckedAt}>{sourceCheckedAt}</time>
         </p>
       )}
     </div>

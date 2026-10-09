@@ -92,6 +92,64 @@ const { groups, currentRoute } = Astro.props;
       trigger(visible)?.focus({ preventScroll: true });
     };
 
+    const currentMode = () => mobileMode.matches ? "mobile" : "desktop";
+    const rootFor = (mode) => mode === "mobile" ? mobile : desktop;
+    const visible = (element) => element instanceof HTMLElement && element.isConnected &&
+      element.getClientRects().length > 0 && getComputedStyle(element).visibility !== "hidden" &&
+      getComputedStyle(element).display !== "none";
+    const identityFor = (element) => {
+      if (!(element instanceof HTMLElement) || !element.isConnected) return null;
+      const mode = mobile.contains(element) ? "mobile" : desktop.contains(element) ? "desktop" : null;
+      if (!mode) return null;
+      const group = mode === "mobile" ? element.closest(".mobile-nav__group") : null;
+      const pageId = element.closest("[data-nav-page-id]")?.getAttribute("data-nav-page-id") ??
+        group?.querySelector(".mobile-nav__overview")?.getAttribute("data-nav-page-id") ?? null;
+      return { mode, pageId, kind: mode === "desktop" ? "desktop-page" : element === summary ?
+        "mobile-trigger" : group && element === trigger(group) ? "mobile-group" : "mobile-page" };
+    };
+    const sourceFor = (identity) => {
+      if (!identity) return null;
+      if (identity.kind === "mobile-trigger") return summary;
+      if (identity.kind === "mobile-group") {
+        const group = [...mobile.querySelectorAll(".mobile-nav__group")].find((element) =>
+          element.querySelector(".mobile-nav__overview")?.getAttribute("data-nav-page-id") === identity.pageId);
+        return group ? trigger(group) : null;
+      }
+      if (!identity.pageId) return null;
+      return [...rootFor(identity.mode).querySelectorAll("a[href]")].find((element) =>
+        identityFor(element)?.pageId === identity.pageId) ?? null;
+    };
+    let pendingIdentity = null;
+    let intentRevoked = false;
+    let previousMode = currentMode();
+    const revoke = () => { pendingIdentity = null; intentRevoked = true; };
+    const responsiveLoss = (identity, active) => {
+      if (!identity || identity.mode === currentMode() ||
+        active !== document.body && active !== document.documentElement) return false;
+      const source = sourceFor(identity);
+      return source instanceof HTMLElement && source.isConnected && !visible(source);
+    };
+    document.addEventListener("focusin", (event) => {
+      const identity = identityFor(event.target);
+      if (identity && identity.mode === currentMode() && visible(event.target)) {
+        pendingIdentity = identity;
+        intentRevoked = false;
+      } else if (!responsiveLoss(pendingIdentity, event.target)) revoke();
+    }, true);
+    document.addEventListener("pointerdown", (event) => {
+      if (!(event.target instanceof Element) || !mobile.contains(event.target) && !desktop.contains(event.target)) revoke();
+    }, true);
+    document.addEventListener("focusout", () => {
+      const observed = pendingIdentity;
+      if (!observed) return;
+      queueMicrotask(() => {
+        // An old event must not invalidate a newer focus record made by the handoff.
+        if (pendingIdentity !== observed) return;
+        if (identityFor(document.activeElement)) return;
+        if (!responsiveLoss(observed, document.activeElement)) revoke();
+      });
+    }, true);
+
     mobile.addEventListener("keydown", (event) => {
       if (event.key !== "Escape" || !(event.target instanceof Element)) return;
       const disclosure = event.target.closest("details[open]");
@@ -121,6 +179,7 @@ const { groups, currentRoute } = Astro.props;
       const current = new URL(window.location.href);
       if (destination.origin !== current.origin || destination.pathname !== current.pathname ||
         destination.search !== current.search) return;
+      if (destination.href === current.href) event.preventDefault();
       let target;
       try { target = destination.hash ? document.getElementById(decodeURIComponent(destination.hash.slice(1))) : home; }
       catch { return; }
@@ -133,23 +192,34 @@ const { groups, currentRoute } = Astro.props;
     });
 
     mobileMode.addEventListener("change", () => {
-      const active = document.activeElement;
+      const mode = currentMode();
+      if (mode === previousMode) return;
+      const outgoingMode = previousMode;
+      previousMode = mode;
+      const live = identityFor(document.activeElement);
+      const identity = intentRevoked ? null : live?.mode === outgoingMode ? live :
+        pendingIdentity?.mode === outgoingMode && responsiveLoss(pendingIdentity, document.activeElement) ? pendingIdentity : null;
+      revoke();
       close(mobile);
-      if (!(active instanceof HTMLElement)) return;
-      if (mobileMode.matches) {
-        if (desktop.contains(active)) summary.focus({ preventScroll: true });
-      } else if (mobile.contains(active)) {
-        const pageId = active.closest("[data-nav-page-id]")?.getAttribute("data-nav-page-id") ??
-          active.closest(".mobile-nav__group")?.querySelector(".mobile-nav__overview")?.getAttribute("data-nav-page-id");
-        const match = [...desktop.querySelectorAll("[data-nav-page-id]")]
-          .find((element) => element.getAttribute("data-nav-page-id") === pageId);
-        const destination = match?.matches("a[href]") ? match : match?.querySelector("a[href]");
-        // Parent focus exposes the existing focus-within submenu before selecting a child.
-        destination?.closest(".desktop-nav__group")?.querySelector(".desktop-nav__link")?.focus({ preventScroll: true });
-        if (destination instanceof HTMLElement && destination.getClientRects().length > 0 &&
-          getComputedStyle(destination).visibility !== "hidden") destination.focus({ preventScroll: true });
-        else home.focus({ preventScroll: true });
+      if (!identity) {
+        const current = identityFor(document.activeElement);
+        if (current?.mode === mode && visible(document.activeElement)) {
+          pendingIdentity = current;
+          intentRevoked = false;
+        }
+        return;
       }
+      if (mode === "mobile") {
+        if (visible(summary)) summary.focus({ preventScroll: true });
+        return;
+      }
+      const match = [...desktop.querySelectorAll("[data-nav-page-id]")]
+        .find((element) => element.getAttribute("data-nav-page-id") === identity.pageId);
+      const destination = match?.matches("a[href]") ? match : match?.querySelector("a[href]");
+      const parent = destination?.closest(".desktop-nav__group")?.querySelector(".desktop-nav__link");
+      if (visible(parent)) parent.focus({ preventScroll: true });
+      if (visible(destination)) destination.focus({ preventScroll: true });
+      else if (visible(home)) home.focus({ preventScroll: true });
     });
     if (!mobileMode.matches) close(mobile);
   })();

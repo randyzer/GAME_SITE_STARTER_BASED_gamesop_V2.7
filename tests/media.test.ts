@@ -17,6 +17,8 @@ import {
 const image = {
   id: "caldera-map",
   type: "image" as const,
+  dimensions: { width: 1200, height: 675 },
+  rightsRef: "private/qa-image",
   src: "/media/maps/caldera.webp",
   alt: "The caldera basin and its three marked access paths",
   sourceUrl: "https://game.example/media/caldera",
@@ -25,6 +27,9 @@ const image = {
 const video = {
   id: "launch-trailer",
   type: "video" as const,
+  dimensions: { width: 800, height: 600 },
+  rightsRef: "private/qa-video",
+  accessibleEquivalent: { kind: "text" as const, text: "A synthetic route crosses three checkpoints." },
   src: "AbC_123-xYz",
   alt: "Launch trailer showing the caldera expedition",
   sourceUrl: "https://game.example/media/launch",
@@ -406,5 +411,100 @@ describe("media catalog", () => {
 
   it("accepts valid local paths without requiring a filesystem callback", () => {
     expect(createMediaCatalog({ assets: [image], pages: [] }, []).assets).toEqual([image]);
+  });
+});
+
+const contractImage = { ...image, dimensions: { width: 1200, height: 675 }, rightsRef: "qa-rights/image", credit: { text: "QA author", url: "https://example.com/author" } };
+const contractVideo = { ...video, dimensions: { width: 800, height: 600 }, rightsRef: "qa-rights/video", accessibleEquivalent: { kind: "text" as const, text: "A synthetic route crosses three checkpoints." } };
+describe("WS03B explicit media contract", () => {
+  it("accepts explicit dimensions, evidence pointer and public attribution", () => {
+    expect(imageAssetSchema.parse(contractImage)).toEqual(contractImage);
+    expect(videoAssetSchema.parse(contractVideo)).toEqual(contractVideo);
+  });
+  it("rejects populated legacy records without silently supplying metadata", () => {
+    const legacy = { id: image.id, type: image.type, src: image.src, alt: image.alt, sourceUrl: image.sourceUrl };
+    const result = imageAssetSchema.safeParse(legacy);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues.map(i => i.path[0])).toEqual(expect.arrayContaining(["dimensions", "rightsRef"]));
+  });
+  it.each([0, -1, 1.5])("rejects invalid dimension %s", width => {
+    expect(imageAssetSchema.safeParse({ ...contractImage, dimensions: { width, height: 600 } }).success).toBe(false);
+  });
+  it.each([{ width: 800 }, { height: 600 }, { width: 800, height: 600, ratio: "4/3" }])("rejects partial or extra dimension fields %j", dimensions => {
+    expect(imageAssetSchema.safeParse({ ...contractImage, dimensions }).success).toBe(false);
+  });
+  it.each(["", "   "])("rejects empty rights pointer %j", rightsRef => {
+    expect(imageAssetSchema.safeParse({ ...contractImage, rightsRef }).success).toBe(false);
+  });
+  it.each([{ text: "" }, { text: "Author", url: "http://example.com" }, { text: "Author", status: "VERIFIED" }])("rejects invalid public credit %j", credit => {
+    expect(imageAssetSchema.safeParse({ ...contractImage, credit }).success).toBe(false);
+  });
+  it("requires equivalent information independently of the video title", () => {
+    const { accessibleEquivalent, ...without } = contractVideo;
+    expect(videoAssetSchema.safeParse(without).success).toBe(false);
+    expect(videoAssetSchema.parse({ ...contractVideo, accessibleEquivalent: { kind: "link", label: "Transcript", href: "/guides/getting-started/" } }).accessibleEquivalent).toEqual({ kind: "link", label: "Transcript", href: "/guides/getting-started/" });
+  });
+  it.each([{ kind: "text", text: "" }, { kind: "text", text: "Route", href: "/extra/" }, { kind: "link", label: "", href: "/guide/" }, { kind: "link", label: "Transcript", href: "javascript:alert(1)" }, { kind: "link", label: "Transcript", href: "//example.com" }, { kind: "link", label: "Transcript", href: "/%2e%2e/private" }])("rejects unsafe equivalent %j", accessibleEquivalent => {
+    expect(videoAssetSchema.safeParse({ ...contractVideo, accessibleEquivalent }).success).toBe(false);
+  });
+  it("keeps empty manifests and unmapped pages valid", () => {
+    expect(parseMediaManifest({ assets: [], pages: [] })).toEqual({ assets: [], pages: [] });
+    expect(createMediaCatalog({ assets: [], pages: [] }, ["home"]).getPageMedia("home")).toEqual({ galleryMedia: [] });
+  });
+  it("resolves public presentation identically through adapter and catalog, without rights metadata", async () => {
+    const adapters = import.meta.glob<{ resolveMediaPresentation: (asset: unknown) => unknown }>("../src/core/media-presentation.ts");
+    const load = adapters["../src/core/media-presentation.ts"];
+    expect(load, "pure media presentation adapter exists").toBeTypeOf("function");
+    const { resolveMediaPresentation } = await load();
+    for (const asset of [contractImage, contractVideo, { ...contractVideo, src: "/media/trailer.mp4" }]) {
+      const parsed = mediaAssetSchema.parse(asset);
+      const publicData = resolveMediaPresentation(parsed);
+      expect(publicData).toMatchObject({ id: asset.id, type: asset.type, dimensions: asset.dimensions, ratio: asset.dimensions, source: { url: asset.sourceUrl } });
+      expect(JSON.stringify(publicData)).not.toContain(asset.rightsRef);
+      expect(JSON.stringify(publicData)).not.toContain("rightsRef");
+      const catalog = createMediaCatalog({ assets: [asset], pages: [] }, []);
+      expect((catalog as unknown as { getPresentation: (id: string) => unknown }).getPresentation(asset.id)).toEqual(publicData);
+    }
+  });
+});
+
+
+describe("WS03C share references in the media authority", () => {
+  const explicit = { ...image, id: "share.explicit" };
+  const fallback = { ...image, id: "share.default" };
+  it("accepts share references without adding visual placement data", () => {
+    const input = { assets: [image, explicit, fallback], defaultShare: fallback.id, pages: [{ pageId: "home", hero: image.id, share: explicit.id }] };
+    expect(parseMediaManifest(input)).toEqual(input);
+    const catalog = createMediaCatalog(input, ["home", "guide.caldera"]);
+    expect(catalog.getPageMedia("home")).toEqual({ heroMedia: image, galleryMedia: [] });
+  });
+  it("resolves explicit share before informative hero before default", () => {
+    const catalog = createMediaCatalog({ assets: [image, explicit, fallback], defaultShare: fallback.id, pages: [{ pageId: "home", hero: image.id, share: explicit.id }, { pageId: "guide.caldera", hero: image.id }] }, ["home", "guide.caldera", "about"]);
+    const resolve = (catalog as unknown as { getShareMedia: (pageId: string) => unknown }).getShareMedia;
+    expect(resolve).toBeTypeOf("function");
+    expect(resolve("home")).toEqual(explicit);
+    expect(resolve("guide.caldera")).toEqual(image);
+    expect(resolve("about")).toEqual(fallback);
+  });
+  it("skips decorative hero and does not infer share media from galleries", () => {
+    const decorative = { ...image, alt: "" };
+    const catalog = createMediaCatalog({ assets: [decorative, fallback], defaultShare: fallback.id, pages: [{ pageId: "home", hero: decorative.id, gallery: [fallback.id] }] }, ["home"]);
+    const resolve = (catalog as unknown as { getShareMedia: (pageId: string) => unknown }).getShareMedia;
+    expect(resolve).toBeTypeOf("function");expect(resolve("home")).toEqual(fallback);
+    const noDefault = createMediaCatalog({ assets: [decorative, fallback], pages: [{ pageId: "home", hero: decorative.id, gallery: [fallback.id] }] }, ["home"]);
+    expect((noDefault as unknown as { getShareMedia: (pageId: string) => unknown }).getShareMedia("home")).toBeUndefined();
+  });
+  it("returns undefined when no share image exists without inventing a placeholder", () => {
+    const catalog = createMediaCatalog({ assets: [], pages: [] }, ["home"]);
+    const resolve = (catalog as unknown as { getShareMedia: (pageId: string) => unknown }).getShareMedia;
+    expect(resolve).toBeTypeOf("function");expect(resolve("home")).toBeUndefined();
+  });
+  it.each(["missing.asset", video.id, "decorative"])("rejects invalid explicit and default share image %s", id => {
+    const assets = [image, video, { ...image, id: "decorative", alt: "" }];
+    expect(mediaManifestSchema.safeParse({ assets, pages: [{ pageId: "home", share: id }] }).success).toBe(false);
+    expect(mediaManifestSchema.safeParse({ assets, pages: [], defaultShare: id }).success).toBe(false);
+  });
+  it("does not let a share-only mapping create an inventory page", () => {
+    expect(() => createMediaCatalog({ assets: [image], pages: [{ pageId: "unknown", share: image.id }] }, ["home"])).toThrow(/inventory/);
   });
 });

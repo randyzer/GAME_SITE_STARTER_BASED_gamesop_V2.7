@@ -138,16 +138,21 @@ function proveOptionalUiUnreferenced(
   optionalUiFiles: string[],
 ): void {
   if (optionalUiFiles.length === 0) return;
-  const searchRuntimePath = join(projectRoot, "src/components/islands/SearchIsland.tsx");
-  if (!existsSync(searchRuntimePath) || !lstatSync(searchRuntimePath).isFile()) {
-    throw new Error(
-      "Pagefind optional UI reference safety cannot be proven because the current Starter search runtime is missing.",
-    );
+  const searchRuntimePaths = [
+    join(projectRoot, "src/components/islands/SearchIsland.tsx"),
+    join(projectRoot, "src/core/pagefind-search-adapter.ts"),
+  ];
+  for (const path of searchRuntimePaths) {
+    if (!existsSync(path) || !lstatSync(path).isFile()) {
+      throw new Error(
+        `Pagefind optional UI reference safety cannot be proven because the current Starter search runtime is missing: ${path}.`,
+      );
+    }
   }
   const pagefindDirectory = join(outputDirectory, "pagefind");
   const referenceFiles = [
     ...collectReferenceFiles(outputDirectory, pagefindDirectory),
-    searchRuntimePath,
+    ...searchRuntimePaths,
   ];
   for (const path of referenceFiles) {
     let content: Buffer;

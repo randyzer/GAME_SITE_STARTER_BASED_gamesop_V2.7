@@ -11,6 +11,30 @@ export interface SearchResult {
   excerpt: string;
 }
 
+export interface SearchProvider {
+  search(query: string): Promise<SearchResult[]>;
+}
+
+export type SearchOutcome =
+  | { status: "results"; query: string; results: SearchResult[] }
+  | { status: "empty" | "error"; query: string; results: [] };
+
+export async function runSearchProvider(
+  provider: SearchProvider,
+  rawQuery: string,
+): Promise<SearchOutcome> {
+  const query = normalizeQuery(rawQuery);
+  if (!query) return { status: "empty", query, results: [] };
+  try {
+    const results = await provider.search(query);
+    return results.length
+      ? { status: "results", query, results }
+      : { status: "empty", query, results: [] };
+  } catch {
+    return { status: "error", query, results: [] };
+  }
+}
+
 function normalizeQuery(value: string): string {
   return value.trim().slice(0, 120);
 }

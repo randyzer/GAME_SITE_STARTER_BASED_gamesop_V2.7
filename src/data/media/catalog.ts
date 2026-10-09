@@ -1,3 +1,4 @@
+import { resolveMediaPresentation } from "../../core/media-presentation";
 import pageInventory from "../page-inventory.json";
 import {
   isLocalVideoPath,
@@ -71,6 +72,17 @@ export function createMediaCatalog(
   return {
     assets: manifest.assets,
     getAsset,
+    getPresentation(id: string) {
+      return resolveMediaPresentation(getAsset(id));
+    },
+    getShareMedia(pageId: string): ImageAsset | undefined {
+      if (!knownPageIds.has(pageId)) return undefined;
+      const mapping = manifest.pages.find((page) => page.pageId === pageId);
+      if (mapping?.share) return getImage(mapping.share);
+      const hero = pages.get(pageId)?.heroMedia;
+      if (hero?.alt) return hero;
+      return manifest.defaultShare ? getImage(manifest.defaultShare) : undefined;
+    },
     getPageMedia(pageId: string): ResolvedPageMedia {
       return pages.get(pageId) ?? { galleryMedia: [] };
     },

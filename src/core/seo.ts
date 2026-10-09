@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import type { ImageAsset } from "../data/schemas/media";
 import type { GameConfig } from "../config/schema";
 import type { PageInventoryEntry } from "../data/schemas/page-inventory";
 
@@ -28,6 +29,18 @@ type IdentityInput = {
   projectConfirmed: true;
   evidenceRef: string;
 };
+
+/** Formats a resolved manifest asset; it does not select media or approve rights. */
+export function resolveShareMetadata(config: GameConfig, image?: ImageAsset) {
+  if (!image) return undefined;
+  if (!image.alt) throw new Error("Share metadata requires an informative image.");
+  return {
+    url: buildCanonicalUrl(config, image.src),
+    width: image.dimensions.width,
+    height: image.dimensions.height,
+    alt: image.alt,
+  };
+}
 
 export function buildCanonicalUrl(config: GameConfig, route: string): string {
   return new URL(route, config.site.url).href;

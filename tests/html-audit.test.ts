@@ -13,7 +13,22 @@ import {
   getPageByRoute,
   siteConfig,
 } from "../src/core/site-data";
-import type { PageInventoryEntry } from "../src/data/schemas/page-inventory";
+import { pageInventoryEntrySchema, type PageInventoryEntry } from "../src/data/schemas/page-inventory";
+
+
+// Controlled-author tests own their article; catalog-wide audit tests keep real inputs.
+const syntheticGuide = pageInventoryEntrySchema.parse({
+  pageId: "guide.qa-html-author", route: "/guides/qa-html-author/", pageType: "guide",
+  cluster: "guides", module: "guides", feature: "guides", priority: 90,
+  visibility: "public", publicationStatus: "published", contentStatus: "ready",
+  developmentStatus: "ready", needsReview: false, needsUpdate: false, indexability: "index",
+  title: "Synthetic HTML Author Audit Guide",
+  description: "Synthetic article input for visible author attribution and additional script identity audits.",
+  publishedAt: "2026-08-10", updatedAt: "2026-09-20", primaryKeyword: "synthetic html author",
+  tags: ["testing"], relatedPageIds: [], relatedEntityRefs: [], confidence: "high",
+  sources: [{ sourceUrl: "https://example.com/qa-html-author", sourceType: "editorial", accessedAt: "2026-09-21",
+    evidenceNote: "Synthetic editorial source for structured author HTML audit tests." }],
+});
 
 function escapeHtml(value: string) {
   return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
@@ -136,7 +151,7 @@ describe("generated HTML audit", () => {
 
   it("accepts configured structured author only when graph and visible attribution match", () => {
     const home = getPageByRoute("/");
-    const guide = enabledPageCatalog.find((page) => page.pageId === "guide.getting-started")!;
+    const guide = syntheticGuide;
     const config = defineGameConfig({
       ...siteConfig,
       identity: {
@@ -167,7 +182,7 @@ describe("generated HTML audit", () => {
 
   it("rejects additional-script identity injection and mismatched visible author", () => {
     const home = getPageByRoute("/");
-    const guide = enabledPageCatalog.find((page) => page.pageId === "guide.getting-started")!;
+    const guide = syntheticGuide;
     const config = defineGameConfig({
       ...siteConfig,
       identity: { articles: { [guide.pageId]: { author: {

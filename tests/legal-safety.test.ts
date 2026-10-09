@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import gameConfig from "../game.config";
+import { gameConfigSchema } from "../src/config/schema";
 import { buildEnabledPageCatalog } from "../src/core/catalog";
 import { canonicalizeLegalPayload, computeLegalContentSha256, resolveLegalPageSafety, type LegalContent, type LegalContentPayload } from "../src/core/legal-safety";
 import { getSitemapRoutes } from "../src/core/seo";
@@ -261,7 +262,12 @@ describe("TL-01 actual static route output", () => {
       const log = `${build.stdout}\n${build.stderr}`;
       expect(build.error, log).toBeUndefined();
       expect(build.status, log).toBe(0);
-      const enabled = buildEnabledPageCatalog(gameConfig, inventory, payloads);
+      const serializedConfig = readFileSync(join(root, "game.config.ts"), "utf8").match(
+        /^import \{ defineGameConfig \} from "\.\/src\/config\/schema";\n\nexport default defineGameConfig\((\{[\s\S]*\})\);\n$/,
+      );
+      if (!serializedConfig) throw new Error("Unexpected synthetic fixture config serialization.");
+      const fixtureConfig = gameConfigSchema.parse(JSON.parse(serializedConfig[1]));
+      const enabled = buildEnabledPageCatalog(fixtureConfig, inventory, payloads);
       expect(log).toContain(`Static output reconciliation passed: ${enabled.length} inventory routes matched.`);
       expect(log).toMatch(new RegExp(`Indexed ${getSitemapRoutes(enabled).length} pages?`));
       const sitemap = readFileSync(join(root, "dist/sitemap-0.xml"), "utf8");

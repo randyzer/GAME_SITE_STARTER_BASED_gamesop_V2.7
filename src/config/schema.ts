@@ -116,6 +116,13 @@ const identityConfigSchema = z
   })
   .strict();
 
+const visualRolesSchema = z.object({
+  font: z.enum(["editorial", "interface"]),
+  density: z.enum(["comfortable", "compact"]),
+  shape: z.enum(["square", "soft"]),
+  state: z.enum(["lifted", "quiet"]),
+}).strict();
+
 export const gameConfigSchema = z
   .object({
     brand: z
@@ -157,6 +164,7 @@ export const gameConfigSchema = z
       })
       .strict(),
     identity: identityConfigSchema.optional(),
+    visualRoles: visualRolesSchema.optional(),
     residueSentinels: z.array(z.object({
       id: z.string().trim().min(1).refine((id) => !id.startsWith("core."), "Core sentinel IDs are reserved."),
       literal: z.string().trim().min(1),

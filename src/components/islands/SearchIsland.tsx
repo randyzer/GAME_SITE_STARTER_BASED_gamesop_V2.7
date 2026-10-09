@@ -5,100 +5,51 @@ import {
   useState,
 } from "react";
 
+import { loadPagefindSearchProvider } from "../../core/pagefind-search-adapter";
 import {
   buildSearchLocation,
-  normalizeSearchResult,
   readSearchQuery,
-  type RawSearchResult,
-  type SearchResult,
+  runSearchProvider,
+  type SearchOutcome,
+  type SearchProvider,
 } from "../../core/search-state";
 
-interface PagefindHit {
-  data: () => Promise<RawSearchResult>;
-}
-
-interface PagefindModule {
-  init: () => Promise<void>;
-  search: (query: string) => Promise<{ results: PagefindHit[] }>;
-}
-
-type SearchStatus = "idle" | "loading" | "ready" | "error";
+type SearchUiState = SearchOutcome | {
+  status: "idle" | "loading";
+  query: string;
+  results: [];
+};
 
 export default function SearchIsland() {
-  const pagefindRef = useRef<PagefindModule | null>(null);
+  const providerRef = useRef<Promise<SearchProvider> | null>(null);
   const requestRef = useRef(0);
   const [query, setQuery] = useState("");
-  const [submittedQuery, setSubmittedQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [status, setStatus] = useState<SearchStatus>("loading");
+  const [state, setState] = useState<SearchUiState>({ status: "idle", query: "", results: [] });
 
-  async function runSearch(value: string, pagefind = pagefindRef.current) {
-    const normalized = readSearchQuery(
-      `?${new URLSearchParams({ q: value }).toString()}`,
-    );
+  async function runSearch(value: string) {
+    const normalized = readSearchQuery(`?${new URLSearchParams({ q: value }).toString()}`);
     const requestId = ++requestRef.current;
-    setSubmittedQuery(normalized);
-
     if (!normalized) {
-      setResults([]);
-      setStatus("idle");
+      setState({ status: "idle", query: "", results: [] });
       return;
     }
-
-    if (!pagefind) {
-      setStatus("loading");
-      return;
-    }
-
-    setStatus("loading");
+    setState({ status: "loading", query: normalized, results: [] });
     try {
-      const response = await pagefind.search(normalized);
-      const rawResults = await Promise.all(
-        response.results.slice(0, 20).map((result) => result.data()),
-      );
-      if (requestId !== requestRef.current) return;
-
-      setResults(
-        rawResults.flatMap((result) => {
-          const normalizedResult = normalizeSearchResult(result);
-          return normalizedResult ? [normalizedResult] : [];
-        }),
-      );
-      setStatus("ready");
+      providerRef.current ??= loadPagefindSearchProvider();
+      const provider = await providerRef.current;
+      const outcome = await runSearchProvider(provider, normalized);
+      if (requestId === requestRef.current) setState(outcome);
     } catch {
-      if (requestId === requestRef.current) {
-        setResults([]);
-        setStatus("error");
-      }
+      providerRef.current = null;
+      if (requestId === requestRef.current) setState({ status: "error", query: normalized, results: [] });
     }
   }
 
   useEffect(() => {
-    let active = true;
-
-    async function initialize() {
-      try {
-        const pagefindPath = "/pagefind/pagefind.js";
-        const pagefind = (await import(
-          /* @vite-ignore */ pagefindPath
-        )) as PagefindModule;
-        await pagefind.init();
-        if (!active) return;
-
-        pagefindRef.current = pagefind;
-        const initialQuery = readSearchQuery(window.location.search);
-        setQuery(initialQuery);
-        await runSearch(initialQuery, pagefind);
-      } catch {
-        if (active) setStatus("error");
-      }
-    }
-
-    void initialize();
-    return () => {
-      active = false;
-      requestRef.current += 1;
-    };
+    const initialQuery = readSearchQuery(window.location.search);
+    setQuery(initialQuery);
+    void runSearch(initialQuery);
+    return () => { requestRef.current += 1; };
   }, []);
 
   function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
@@ -108,20 +59,22 @@ export default function SearchIsland() {
   }
 
   const statusMessage =
-    status === "loading"
+    state.status === "loading"
       ? "Searching the local index…"
-      : status === "error"
-        ? "The local search index could not be loaded. Try refreshing this page."
-        : status === "ready" && submittedQuery
-          ? `${results.length} result${results.length === 1 ? "" : "s"} for “${submittedQuery}”.`
-          : "Enter a guide title, game term, or question.";
+      : state.status === "error"
+        ? "The local search index is unavailable. Try refreshing this page."
+        : state.status === "results"
+          ? `${state.results.length} result${state.results.length === 1 ? "" : "s"} for “${state.query}”.`
+          : state.status === "empty"
+            ? `No matching results for “${state.query}”. Try a shorter or broader term.`
+            : "Enter a guide title, game term, or question.";
 
   return (
-    <section className="search-console" aria-labelledby="search-console-title">
+    <section className="search-console" aria-labelledby="search-console-title" data-search-state={state.status}>
       <div className="search-console__status">
         <span className="signal-dot" aria-hidden="true" />
         <div>
-          <p id="search-console-title">Local index online</p>
+          <p id="search-console-title">Local site search</p>
           <small>Queries stay in this browser and run against the static build.</small>
         </div>
       </div>
@@ -146,16 +99,16 @@ export default function SearchIsland() {
         {statusMessage}
       </p>
 
-      {status === "ready" && submittedQuery && results.length === 0 && (
+      {state.status === "empty" && (
         <div className="search-empty">
           <span aria-hidden="true">00</span>
           <p>No matching dispatches. Try a shorter or broader term.</p>
         </div>
       )}
 
-      {results.length > 0 && (
+      {state.status === "results" && (
         <ol className="search-results">
-          {results.map((result, index) => (
+          {state.results.map((result, index) => (
             <li key={result.url}>
               <span>{String(index + 1).padStart(2, "0")}</span>
               <a href={result.url}>

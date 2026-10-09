@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Fictional relay system loop, QA relay rules v1</title>
+  <desc id="desc">Light identifies the next unlit station, supply provides one cell, and route orders Dock, Bridge, Beacon. This is a synthetic QA model.</desc>
+  <rect width="1200" height="675" fill="#f6f0df"/>
+  <g font-family="sans-serif" text-anchor="middle" fill="#203b3f">
+    <text x="600" y="80" font-size="36">Three systems. One relay loop.</text>
+    <g fill="#e9c679" stroke="#203b3f" stroke-width="4">
+      <rect x="65" y="200" width="300" height="220" rx="10"/><rect x="450" y="200" width="300" height="220" rx="10"/><rect x="835" y="200" width="300" height="220" rx="10"/>
+    </g>
+    <g fill="none" stroke="#203b3f" stroke-width="5"><path d="M375 310h60m-16-13 16 13-16 13"/><path d="M760 310h60m-16-13 16 13-16 13"/><path d="M985 440v65H215v-65m-13 16 13-16 13 16"/></g>
+    <text x="215" y="255" font-size="30">LIGHT</text><text x="215" y="330" font-size="22">Identify next unlit stop</text>
+    <text x="600" y="255" font-size="30">SUPPLY</text><text x="600" y="330" font-size="22">Consume one cell</text>
+    <text x="985" y="255" font-size="30">ROUTE</text><text x="985" y="330" font-size="22">Dock → Bridge → Beacon</text>
+    <text x="600" y="570" font-size="25">Repeat until all three stations are lit</text>
+    <text x="600" y="625" font-size="21">QA relay rules v1 · original synthetic diagram · 2026-10-08</text>
+  </g>
+</svg>

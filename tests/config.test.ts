@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   defineGameConfig,
+  gameConfigSchema,
   featureFlagKeys,
   type GameConfigInput,
 } from "../src/config/schema";
@@ -228,4 +229,41 @@ describe("defineGameConfig", () => {
     } as unknown as GameConfigInput)).toThrow();
   });
 
+});
+
+
+describe("explicit semantic visual roles", () => {
+  const complete = {
+    font: "interface", density: "compact", shape: "soft", state: "quiet",
+  } as const;
+
+  it("keeps legacy omission distinct from an explicit project choice", () => {
+    expect(gameConfigSchema.parse(validConfig)).not.toHaveProperty("visualRoles");
+  });
+
+  it("accepts the complete alternate role selection", () => {
+    expect(gameConfigSchema.parse({ ...validConfig, visualRoles: complete }).visualRoles).toEqual(complete);
+  });
+
+  it("accepts the complete default role selection", () => {
+    const roles = { font: "editorial", density: "comfortable", shape: "square", state: "lifted" };
+    expect(gameConfigSchema.parse({ ...validConfig, visualRoles: roles }).visualRoles).toEqual(roles);
+  });
+
+  it.each(["font", "density", "shape", "state"])("rejects an authored object missing %s", (key) => {
+    const roles: Record<string, string> = { ...complete };
+    delete roles[key];
+    expect(gameConfigSchema.safeParse({ ...validConfig, visualRoles: roles }).success).toBe(false);
+  });
+
+  it.each([
+    ["font", "Cinzel"], ["font", "fantasy"], ["density", "12px"],
+    ["density", "very-dense"], ["shape", "8px"], ["state", "animated"],
+  ])("rejects unsupported %s role %s", (key, value) => {
+    expect(gameConfigSchema.safeParse({ ...validConfig, visualRoles: { ...complete, [key]: value } }).success).toBe(false);
+  });
+
+  it.each(["fontFamily", "borderRadius", "hoverTransform", "style"])("rejects arbitrary override key %s", (key) => {
+    expect(gameConfigSchema.safeParse({ ...validConfig, visualRoles: { ...complete, [key]: "none" } }).success).toBe(false);
+  });
 });

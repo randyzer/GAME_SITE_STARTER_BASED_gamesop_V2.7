@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import gameConfig from "../game.config";
+import { gameConfigSchema } from "../src/config/schema";
 import { CORE_SENTINELS } from "../scripts/core-safety-sentinels";
 import { createCoreBuildFixture, cleanupCoreBuildFixture, runFixtureNpm, writeFixtureGameConfigSource } from "./helpers/core-build-fixture";
 
@@ -102,7 +102,18 @@ describe("PP-02 real generated output", () => {
     mkdirSync(join(root, "docs"), { recursive: true });
     writeFileSync(join(root, "docs/private-notes.md"), instruction);
     try {
-      writeFixtureGameConfigSource(root, JSON.stringify(gameConfig));
+      const serializedConfig = readFileSync(configPath, "utf8").match(
+        /^import \{ defineGameConfig \} from "\.\/src\/config\/schema";\n\nexport default defineGameConfig\((\{[\s\S]*\})\);\n$/,
+      );
+      if (!serializedConfig) throw new Error("Unexpected synthetic fixture config serialization.");
+      const fixtureConfig = gameConfigSchema.parse(JSON.parse(serializedConfig[1]));
+      writeFixtureGameConfigSource(root, JSON.stringify({
+        ...fixtureConfig,
+        brand: { ...fixtureConfig.brand, name: "Game Atlas", shortName: "Atlas", mark: "GA" },
+        site: { ...fixtureConfig.site, url: "https://gameatlas.example" },
+        seo: { ...fixtureConfig.seo, defaultTitle: "Game Atlas — Guides, Builds & Game Data", titleTemplate: "%s | Game Atlas" },
+        social: { ...fixtureConfig.social, xHandle: "@gameatlas" },
+      }));
       expect(runFixtureNpm(root, "validate").status).not.toBe(0);
       const evidence = runFixtureNpm(root, "build:evidence");
       expect(evidence.status, `${evidence.stdout}\n${evidence.stderr}`).toBe(0);

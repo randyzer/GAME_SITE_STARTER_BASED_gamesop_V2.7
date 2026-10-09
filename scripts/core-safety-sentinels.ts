@@ -176,7 +176,7 @@ export function collectSourceResidueSignals(input: {
     ...config.navigation.groups.map((group) => "label" in group ? group.label : "")].join("\n"));
   for (const page of pages) {
     const copy = [page.title, page.description];
-    if (page.pageType === "about") copy.push(...strings(getStaticPageCopy("about")));
+    if (page.pageType === "about") copy.push(...strings(getStaticPageCopy("about", page.description)));
     if (["privacy", "terms"].includes(page.pageType) && legalContent && typeof legalContent === "object") {
       copy.push(...strings((legalContent as Record<string, unknown>)[page.pageType]));
     }

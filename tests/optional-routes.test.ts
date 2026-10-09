@@ -4,17 +4,43 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import gameConfig from "../game.config";
+import { gameConfigSchema } from "../src/config/schema";
 import { buildEnabledPageCatalog } from "../src/core/catalog";
 import {
   buildGuideRouteRecords,
   buildSearchRouteRecords,
 } from "../src/core/optional-routes";
-import pageInventoryData from "../src/data/page-inventory.json";
 import { parsePageInventory } from "../src/data/schemas/page-inventory";
 
-const inventory = parsePageInventory(pageInventoryData);
+// Route contract tests own their input; adopted projects need not ship this guide.
+const base = {
+  cluster: "guides", priority: 90, visibility: "public", publicationStatus: "published",
+  contentStatus: "ready", developmentStatus: "ready", needsReview: false, needsUpdate: false,
+  indexability: "index", publishedAt: "2026-08-10", updatedAt: "2026-09-20",
+  tags: ["testing"], relatedEntityRefs: [], confidence: "high",
+  sources: [{ sourceUrl: "https://example.com/qa-routes", sourceType: "editorial", accessedAt: "2026-09-20", evidenceNote: "Synthetic editorial source for optional route contract tests." }],
+};
+const inventory = parsePageInventory([
+  { ...base, pageId: "hub.guides", route: "/guides/", pageType: "hub", module: "guides", feature: "guides",
+    title: "Synthetic Guide Route Hub", primaryKeyword: "synthetic route hub",
+    description: "Synthetic hub input for testing guide route generation and feature exclusion.", relatedPageIds: [] },
+  { ...base, pageId: "guide.qa-routes", route: "/guides/getting-started/", pageType: "guide", module: "guides", feature: "guides",
+    title: "Synthetic Guide Route Article", primaryKeyword: "synthetic route article",
+    description: "Synthetic article input with a matching content slug for guide route contract tests.",
+    contentRef: { collection: "guides", slug: "getting-started" }, relatedPageIds: ["hub.guides"] },
+  { ...base, pageId: "search", route: "/search/", pageType: "search", module: "search", feature: "search",
+    title: "Synthetic Search Route Page", primaryKeyword: "synthetic search route",
+    description: "Synthetic search input for independent feature gating and a guide fallback link.", relatedPageIds: ["hub.guides"] },
+]);
+const fixtureConfig = gameConfigSchema.parse({
+  ...gameConfig,
+  features: { guides: true, heroes: false, weapons: false, items: false, maps: false,
+    tierLists: false, news: false, search: true, calculator: false, planner: false },
+  navigation: { groups: [{ pageId: "hub.guides", children: ["guide.qa-routes"] }, { pageId: "search" }] },
+  homepage: { ...gameConfig.homepage, featuredPageIds: ["guide.qa-routes"] },
+});
 const gettingStarted = inventory.find(
-  (page) => page.pageId === "guide.getting-started",
+  (page) => page.pageId === "guide.qa-routes",
 )!;
 const guideContent = {
   collection: "guides",
@@ -23,12 +49,12 @@ const guideContent = {
 };
 
 function catalogWith(
-  features: Partial<(typeof gameConfig)["features"]>,
+  features: Partial<(typeof fixtureConfig)["features"]>,
 ) {
   return buildEnabledPageCatalog(
     {
-      ...gameConfig,
-      features: { ...gameConfig.features, ...features },
+      ...fixtureConfig,
+      features: { ...fixtureConfig.features, ...features },
     },
     inventory,
   );

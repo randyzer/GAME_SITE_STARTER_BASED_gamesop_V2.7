@@ -1,4 +1,5 @@
 ---
+import { resolvePageFreshness } from "../../core/freshness";
 import type { MarkdownHeading } from "astro";
 
 import { enabledPageCatalog, getRelatedPages, siteConfig } from "../../core/site-data";
@@ -48,9 +49,7 @@ const {
 const tocHeadings = selectWikiArticleHeadings(headings);
 const showToc = tocHeadings.length >= 2;
 const relatedPages = getRelatedPages(page);
-const lastVerified = [...page.sources]
-  .sort((left, right) => right.accessedAt.localeCompare(left.accessedAt))
-  .at(0)?.accessedAt;
+const freshness = resolvePageFreshness(page);
 const canonical = buildCanonicalUrl(siteConfig, page.route);
 const breadcrumbTrail = buildBreadcrumbTrail(
   siteConfig,
@@ -85,14 +84,20 @@ const authorAttribution = resolveStructuredIdentity(siteConfig, page).authorAttr
         <h1 data-pagefind-meta="title">{page.title}</h1>
         <p class="article__dek" data-pagefind-meta="description">{page.description}</p>
         <dl class="article__meta wiki-article__meta">
+          {freshness.publishedAt && (
+            <div>
+              <dt>Published</dt>
+              <dd><time datetime={freshness.publishedAt}>{freshness.publishedAt}</time></dd>
+            </div>
+          )}
           <div>
             <dt>Last updated</dt>
-            <dd><time datetime={page.updatedAt}>{page.updatedAt}</time></dd>
+            <dd><time datetime={freshness.updatedAt}>{freshness.updatedAt}</time></dd>
           </div>
-          {lastVerified && (
+          {freshness.sourceCheckedAt && (
             <div>
-              <dt>Last verified</dt>
-              <dd><time datetime={lastVerified}>{lastVerified}</time></dd>
+              <dt>Sources checked</dt>
+              <dd><time datetime={freshness.sourceCheckedAt}>{freshness.sourceCheckedAt}</time></dd>
             </div>
           )}
           {authorAttribution && (

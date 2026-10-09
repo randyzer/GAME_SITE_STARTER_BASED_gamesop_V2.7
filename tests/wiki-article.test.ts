@@ -5,7 +5,22 @@ import { describe, expect, it } from "vitest";
 
 import WikiArticle from "../src/components/wiki/WikiArticle.astro";
 import { selectWikiArticleHeadings } from "../src/components/wiki/wiki-article";
-import { pageInventory } from "../src/core/site-data";
+import { pageInventoryEntrySchema } from "../src/data/schemas/page-inventory";
+
+
+// Rendering tests own their guide; a real adoption need not include a setup article.
+const syntheticGuide = pageInventoryEntrySchema.parse({
+  pageId: "guide.qa-wiki", route: "/guides/qa-wiki/", pageType: "guide",
+  cluster: "guides", module: "guides", feature: "guides", priority: 90,
+  visibility: "public", publicationStatus: "published", contentStatus: "ready",
+  developmentStatus: "ready", needsReview: false, needsUpdate: false, indexability: "index",
+  title: "Synthetic Wiki Article Test Guide",
+  description: "Synthetic guide input for FAQ, TOC, structured identity and independent date projection.",
+  publishedAt: "2026-08-10", updatedAt: "2026-09-20", primaryKeyword: "synthetic wiki article",
+  tags: ["testing"], relatedPageIds: ["hub.guides"], relatedEntityRefs: [], confidence: "high",
+  sources: [{ sourceUrl: "https://example.com/qa-wiki", sourceType: "editorial", accessedAt: "2026-09-21",
+    evidenceNote: "Synthetic editorial source for wiki article rendering contract tests." }],
+});
 
 const wikiArticleUrl = new URL(
   "../src/components/wiki/WikiArticle.astro",
@@ -100,9 +115,7 @@ describe("WikiArticle", () => {
   });
 
   it("renders FAQ after body content without adding its heading to the body TOC", async () => {
-    const page = pageInventory.find(
-      (entry) => entry.pageId === "guide.getting-started",
-    )!;
+    const page = syntheticGuide;
     const container = await AstroContainer.create();
     const html = await container.renderToString(WikiArticle, {
       props: {
@@ -144,11 +157,34 @@ describe("WikiArticle", () => {
     const wikiArticle = source(wikiArticleUrl);
     expect(wikiArticle).toContain("resolveStructuredIdentity(siteConfig, page).authorAttribution");
     expect(wikiArticle).toContain("data-structured-author-id");
-    const page = pageInventory.find((entry) => entry.pageId === "guide.getting-started")!;
+    const page = syntheticGuide;
     const container = await AstroContainer.create();
     const html = await container.renderToString(WikiArticle, { props: { page }, slots: { default: "<p>Body</p>" } });
     expect(html).not.toContain("data-structured-author-id");
     expect(html).not.toMatch(/<dt>Author<\/dt>/);
   });
 
+});
+
+
+it("renders independent freshness dates without live metadata", async () => {
+  const page = { ...syntheticGuide, publishedAt: "2026-08-10", updatedAt: "2026-09-20", sources: [
+    { sourceUrl: "https://example.com/qa-a", sourceType: "editorial" as const, accessedAt: "2026-09-18", evidenceNote: "Private synthetic source access evidence" },
+    { sourceUrl: "https://example.com/qa-b", sourceType: "editorial" as const, accessedAt: "2026-09-21", evidenceNote: "Private synthetic source access evidence B" },
+  ] };
+  const container = await AstroContainer.create();
+  const html = (await container.renderToString(WikiArticle, { props: { page, sectionLabel: "QA article" }, slots: { default: "<p>Synthetic body</p>" } })).replace(/<!--.*?-->/g, "");
+  expect(html).toMatch(/<dt>Published<\/dt>[\s\S]*?<time datetime="2026-08-10"/);
+  expect(html).toMatch(/<dt>Last updated<\/dt>[\s\S]*?<time datetime="2026-09-20"/);
+  expect(html).toMatch(/<dt>Sources checked<\/dt>[\s\S]*?<time datetime="2026-09-21"/);
+  expect(html).not.toMatch(/<dt>Live status<\/dt>|Observed live|Status source|Not live telemetry|Last verified|Live now|Currently live|Private synthetic source access evidence/);
+  expect(html).toContain('"datePublished":"2026-08-10"');
+  expect(html).toContain('"dateModified":"2026-09-20"');
+});
+
+it("does not render live metadata for existing pages", async () => {
+  const page = syntheticGuide;
+  const container = await AstroContainer.create();
+  const html = await container.renderToString(WikiArticle, { props: { page, sectionLabel: "QA article" }, slots: { default: "<p>Body</p>" } });
+  expect(html).not.toMatch(/Observed live|Status source|Not live telemetry|<dt>Live status<\/dt>/);
 });

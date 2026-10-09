@@ -1,6 +1,6 @@
 import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { existsSync, readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { buildHomepageModel } from "../src/components/home/home-model";
 import { defineGameConfig } from "../src/config/schema";
@@ -13,6 +13,7 @@ import {
 } from "../src/core/site-data";
 import type { PageInventoryEntry } from "../src/data/schemas/page-inventory";
 import HomePage from "../src/pages/index.astro";
+import { createMediaCatalog, mediaCatalog } from "../src/data/media/catalog";
 
 type AstroComponent = Parameters<AstroContainer["renderToString"]>[0];
 const homeComponents = import.meta.glob<{ default: AstroComponent }>(
@@ -296,6 +297,8 @@ describe("homepage model", () => {
     const faq = [{ question: "Where should I begin?", answer: "Open the first guide." }];
     const heroMedia = {
       id: "home.hero",
+      dimensions: { width: 800, height: 600 },
+      rightsRef: "private/qa-home-hero",
       type: "image" as const,
       src: "/media/home-hero.svg",
       alt: "A player crossing the opening area",
@@ -324,6 +327,8 @@ describe("homepage presentation", () => {
     });
     const heroMedia = {
       id: "home.hero",
+      dimensions: { width: 800, height: 600 },
+      rightsRef: "private/qa-home-hero",
       type: "image" as const,
       src: "/media/home-hero.svg",
       alt: "A player crossing the opening area",
@@ -488,7 +493,15 @@ describe("homepage presentation", () => {
 
   it("uses only the existing Phase B media placements and hides an empty home mapping", async () => {
     const container = await AstroContainer.create();
-    const html = await container.renderToString(HomePage);
+    const emptyMedia = createMediaCatalog({ assets: [], pages: [] }, [homePage.pageId]);
+    const mediaQuery = vi.spyOn(mediaCatalog, "getPageMedia")
+      .mockImplementation(emptyMedia.getPageMedia);
+    let html: string;
+    try {
+      html = await container.renderToString(HomePage);
+    } finally {
+      mediaQuery.mockRestore();
+    }
     const main = html.match(/<main\b[\s\S]*?<\/main>/)?.[0] ?? "";
     const index = source(indexUrl);
 
@@ -580,4 +593,11 @@ describe("FAQ presentation", () => {
 
     expect(html.trim()).toBe("");
   });
+});
+
+
+it("states the recorded date provenance of the Latest updates section", () => {
+  const source = readFileSync(indexUrl, "utf8");
+  expect(source).toContain('title="Latest updates"');
+  expect(source).toContain('eyebrow="Ordered by recorded update date"');
 });

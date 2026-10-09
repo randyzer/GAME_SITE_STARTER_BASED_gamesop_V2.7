@@ -297,17 +297,31 @@ describe("ad composition boundaries", () => {
     expect(html).not.toMatch(/data-ad-|ad-slot|public-home-primary|fixture-bootstrap/i);
   });
 
-  it("identifies V2.6.5 without mutable release-state claims", () => {
+  it("separates V2.7 Candidate identity from historical release provenance", () => {
     const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
     const qa = readFileSync(new URL("../docs/QA_CHECKLIST.md", import.meta.url), "utf8");
 
-    expect(readme).toMatch(/GAME_SITE_STARTER v2\.6\.5 documentation-correction patch line/i);
+    expect(readme).toMatch(/^# GAME_SITE_STARTER V2\.7 Candidate$/m);
+    expect(qa).toMatch(/^# GAME_SITE_STARTER V2\.7 Candidate QA Checklist$/m);
+    expect(readme).toContain("not a released or production-approved package");
+    expect(qa).toContain("Candidate is not release identity");
+    expect(readme).toMatch(/Inherited V2\.6\.5 documentation-correction patch line/i);
+    expect(qa).toMatch(/V2\.6\.5 defines the lifecycle-state corrective patch line/i);
     expect(readme).toMatch(/GAME_SOP v2\.6\.5.*defines.*methodology/i);
-    expect(qa).toMatch(/GAME_SITE_STARTER v2\.6\.5 documentation-correction patch line QA checklist/i);
-    expect(qa).toMatch(/GAME_SOP v2\.6\.5.*production methodology/i);
     expect(`${readme}\n${qa}`).toMatch(/v2\.6\.4.*released.*frozen/i);
-    expect(`${readme}\n${qa}`).not.toMatch(
+    expect(readme).toContain("starter-v2.6.4");
+    expect(qa).toContain("3138778fa4b4cc0f9daa4687a752de99fd1e6d88");
+
+    const historicalReadme = readme.slice(
+      readme.indexOf("## Inherited V2.6.5"),
+      readme.indexOf("## V2.7 WS-02"),
+    );
+    const historicalQA = qa.slice(0, qa.indexOf("## V2.7 evidence levels"));
+    expect(`${historicalReadme}\n${historicalQA}`).not.toMatch(
       /implementation candidate|under preparation|preparing release|unreleased|not released|release pending|not tagged|untagged|tag pending|not frozen|freeze pending|awaiting freeze/i,
+    );
+    expect(`${readme}\n${qa}`).not.toMatch(
+      /\bV2\.7 (?:is |has been )?(?:released|tagged|frozen|approved)\b|\b(?:released|tagged|frozen|approved) V2\.7\b|starter-v2\.7|final Human PASS|IMPLEMENTATION COMPLETE/i,
     );
   });
 });

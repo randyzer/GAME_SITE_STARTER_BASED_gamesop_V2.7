@@ -29,6 +29,7 @@ import {
   collectChromeHtmlErrors,
   collectLocalVideoAdvisories,
   collectMediaHtmlErrors,
+  collectShareHtmlErrors,
   isLocalMediaFile,
   isPublicImageFile,
 } from "./media-validation";
@@ -103,6 +104,13 @@ for (const page of enabledPageCatalog) {
     mediaCatalog.assets,
     (src) => isLocalMediaFile(src, outputDirectory),
     mediaPageTypes.has(page.pageType) ? expectedPageMedia : undefined,
+  ).map((error) => `[${page.route}] ${error}`));
+  errors.push(...collectShareHtmlErrors(
+    html,
+    siteConfig,
+    mediaCatalog.getShareMedia(page.pageId),
+    (src) => isLocalMediaFile(src, outputDirectory),
+    purpose === "final" && page.indexability === "index",
   ).map((error) => `[${page.route}] ${error}`));
   const htmlBytes = Buffer.byteLength(html);
   const assets = collectReferencedAssetPaths(html);

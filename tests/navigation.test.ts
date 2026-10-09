@@ -21,6 +21,9 @@ function source(url: URL) {
 }
 
 describe("navigation presentation boundary", () => {
+  it("allows prose grid items to shrink around the Core local table scroller", () => {
+    expect(source(globalStylesUrl)).toMatch(/\.prose\s*\{[^}]*min-width:\s*0\s*;/);
+  });
   it("passes resolved groups from Header to both navigation renderers", () => {
     const header = source(headerUrl);
 

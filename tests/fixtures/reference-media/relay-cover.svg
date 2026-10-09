@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Lantern Relay synthetic cover</title>
+  <desc id="desc">Three amber lanterns light a fictional circuit. Original QA illustration, not gameplay imagery.</desc>
+  <rect width="1200" height="630" fill="#17262c"/>
+  <path d="M170 430H1030M300 430V270M600 430V270M900 430V270" fill="none" stroke="#739a93" stroke-width="12"/>
+  <g fill="#efb960" stroke="#f5dc9d" stroke-width="5">
+    <path d="M260 220h80l20 130H240z"/><path d="M560 220h80l20 130H540z"/><path d="M860 220h80l20 130H840z"/>
+  </g>
+  <g fill="none" stroke="#c2d8ca" stroke-width="7">
+    <path d="M280 220v-40q20-25 40 0v40"/><path d="M580 220v-40q20-25 40 0v40"/><path d="M880 220v-40q20-25 40 0v40"/>
+  </g>
+  <g fill="#efb960"><circle cx="300" cy="430" r="21"/><circle cx="600" cy="430" r="21"/><circle cx="900" cy="430" r="21"/></g>
+  <g fill="#edf1e6" font-family="sans-serif" text-anchor="middle">
+    <text x="600" y="105" font-size="48">LANTERN RELAY</text>
+    <text x="300" y="490" font-size="24">Supply Dock</text><text x="600" y="490" font-size="24">Signal Bridge</text><text x="900" y="490" font-size="24">East Beacon</text>
+    <text x="600" y="565" font-size="23">SYNTHETIC REFERENCE FIXTURE · NOT A REAL GAME</text>
+  </g>
+</svg>

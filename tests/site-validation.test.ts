@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { defineGameConfig } from "../src/config/schema";
 import { entityModuleDefinitions } from "../src/data/entity-modules";
-import { pageTypeSchema } from "../src/data/schemas/page-inventory";
+import { pageTypeSchema, parsePageInventory } from "../src/data/schemas/page-inventory";
 import { loadFactModule } from "../src/core/fact-loader";
 import {
   pageInventory,
@@ -17,6 +17,37 @@ const guideContent = {
   id: "getting-started",
   data: { pageId: "guide.getting-started" },
 };
+
+
+// These two deliberate violation cases own the pages needed to exercise each error category.
+const base = {
+  priority: 90, visibility: "public", publicationStatus: "published", contentStatus: "ready",
+  developmentStatus: "ready", needsReview: false, needsUpdate: false, indexability: "index",
+  publishedAt: "2026-08-10", updatedAt: "2026-09-20", tags: ["testing"],
+  relatedPageIds: [], relatedEntityRefs: [], confidence: "high",
+  sources: [{ sourceUrl: "https://example.com/qa-site-validation", sourceType: "editorial", accessedAt: "2026-09-21",
+    evidenceNote: "Synthetic editorial source for controlled site validation negative tests." }],
+};
+const syntheticInventory = parsePageInventory([
+  { ...base, pageId: "home", route: "/", pageType: "home", cluster: "core", module: "core",
+    title: "Synthetic Site Validation Home", primaryKeyword: "synthetic validation home",
+    description: "Synthetic home input for controlled required-route and navigation validation tests." },
+  { ...base, pageId: "guide.getting-started", route: "/guides/getting-started/", pageType: "guide",
+    cluster: "guides", module: "guides", feature: "guides", title: "Synthetic Site Validation Guide",
+    primaryKeyword: "synthetic validation guide", description: "Synthetic guide input to prove missing content entry aggregation without real game assumptions.",
+    contentRef: { collection: "guides", slug: "getting-started" } },
+  { ...base, pageId: "hero.demo-sentinel", route: "/heroes/demo-sentinel/", pageType: "hero",
+    cluster: "heroes", module: "heroes", feature: "heroes", title: "Synthetic Site Validation Hero",
+    primaryKeyword: "synthetic validation hero", description: "Synthetic entity input to prove route-family and cross-module feature rejection independently.",
+    entityRef: { entityType: "hero", entityId: "demo-sentinel" } },
+]);
+const syntheticConfig = defineGameConfig({
+  ...siteConfig,
+  features: { guides: true, heroes: true, weapons: false, items: false, maps: false,
+    tierLists: false, news: false, search: false, calculator: false, planner: false },
+  navigation: { groups: [{ pageId: "home" }, { pageId: "guide.getting-started" }, { pageId: "hero.demo-sentinel" }] },
+  homepage: { ...siteConfig.homepage, featuredPageIds: ["guide.getting-started"] },
+});
 
 describe("collectSiteValidationErrors", () => {
   it.each(["privacy", "terms"])("rejects explicit navigation and homepage references to unavailable %s", (pageId) => {
@@ -47,14 +78,14 @@ describe("collectSiteValidationErrors", () => {
 
   it("aggregates independent route, content, implementation, and fact errors", () => {
     const configWithHeroes = defineGameConfig({
-      ...siteConfig,
+      ...syntheticConfig,
       features: {
-        ...siteConfig.features,
+        ...syntheticConfig.features,
         guides: true,
         heroes: true,
       },
     });
-    const inventoryWithoutHome = pageInventory.filter(
+    const inventoryWithoutHome = syntheticInventory.filter(
       (page) => page.pageId !== "home",
     );
 
@@ -230,14 +261,14 @@ describe("collectSiteValidationErrors", () => {
   });
 
   it("rejects an entity page gated by another module's feature", () => {
-    const mismatchedInventory = pageInventory.map((page) =>
+    const mismatchedInventory = syntheticInventory.map((page) =>
       page.pageId === "hero.demo-sentinel"
         ? { ...page, feature: "items" as const }
         : page,
     );
 
     const errors = collectSiteValidationErrors({
-      config: siteConfig,
+      config: syntheticConfig,
       inventory: mismatchedInventory,
       contentEntries: [guideContent],
       factModules: {},

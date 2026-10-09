@@ -7,19 +7,20 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { defineGameConfig } from "../src/config/schema";
 import { buildEnabledPageCatalog } from "../src/core/catalog";
 import {
-  pageInventory,
   resolveNavigationGroups,
   siteConfig,
 } from "../src/core/site-data";
 import { collectOutputReconciliationErrors, routeToOutputFile } from "../src/core/output-reconciliation";
 import { getSitemapRoutes } from "../src/core/seo";
 import mediaFixture from "./fixtures/media/media-rich.json";
+import { parsePageInventory } from "../src/data/schemas/page-inventory";
 
 let fixtureRoot: string;
 let buildLog = "";
 const projectRoot = process.cwd();
 const mediaBuildConfig = defineGameConfig({
   ...siteConfig,
+  brand: { name: "Field Notes", shortName: "Field", mark: "FN", logoPath: "/logo.svg", tagline: "Synthetic editorial QA project." },
   navigation: {
     groups: [
       { label: "Home", pageId: "home" },
@@ -46,22 +47,31 @@ const mediaBuildConfig = defineGameConfig({
     planner: false,
   },
 });
-const mediaBuildCatalog = buildEnabledPageCatalog(
-  mediaBuildConfig,
-  pageInventory,
-);
-const mediaBuildNavigation = resolveNavigationGroups(
-  mediaBuildConfig.navigation.groups,
-  mediaBuildCatalog,
-);
+let mediaBuildCatalog: ReturnType<typeof buildEnabledPageCatalog>;
+let mediaBuildNavigation: ReturnType<typeof resolveNavigationGroups>;
 
 beforeAll(() => {
   fixtureRoot = createCoreBuildFixture();
+  mediaBuildCatalog = buildEnabledPageCatalog(mediaBuildConfig,
+    parsePageInventory(JSON.parse(readFileSync(join(fixtureRoot, "src/data/page-inventory.json"), "utf8"))));
+  mediaBuildNavigation = resolveNavigationGroups(mediaBuildConfig.navigation.groups, mediaBuildCatalog);
+  // This test replaces the manifest, so remove the helper-owned default asset as well.
+  rmSync(join(fixtureRoot, "public/media/qa-default-share.svg"));
   writeFileSync(
     join(fixtureRoot, "game.config.ts"),
     `import { defineGameConfig } from "./src/config/schema";\n\nexport default defineGameConfig(${JSON.stringify(adoptFixtureConfig(mediaBuildConfig), null, 2)});\n`,
   );
-  writeFileSync(join(fixtureRoot, "src/data/media/media.json"), JSON.stringify(mediaFixture));
+  writeFileSync(join(fixtureRoot, "src/data/media/media.json"), JSON.stringify({
+    ...mediaFixture,
+    defaultShare: "qa.overview",
+    assets: mediaFixture.assets.map(asset => {
+      // Explicit migration of these known synthetic assets; never a production schema default.
+      if (asset.id === "qa.overview") return { ...asset, dimensions: { width: 1200, height: 675 }, rightsRef: "private/qa-overview" };
+      if (asset.id === "qa.detail") return { ...asset, dimensions: { width: 800, height: 600 }, rightsRef: "private/qa-detail" };
+      if (asset.id === "qa.trailer") return { ...asset, dimensions: { width: 1920, height: 1080 }, rightsRef: "private/qa-trailer", accessibleEquivalent: { kind: "text", text: "Public animation test trailer, with no game association." } };
+      throw new Error(`Unmigrated synthetic media asset: ${asset.id}`);
+    }),
+  }));
   for (const file of ["qa-overview.svg", "qa-detail.svg"]) {
     cpSync(resolve(projectRoot, "tests/fixtures/media", file), join(fixtureRoot, "public/media", file));
   }
@@ -128,3 +138,53 @@ describe("media-rich static build", () => {
     }
   });
 });
+
+it("builds WS03B explicit media information without private rights references", () => {
+  const html = readFileSync(join(fixtureRoot, "dist/guides/getting-started/index.html"), "utf8");
+  expect(html).toContain('width="1200"');
+  expect(html).toContain('height="675"');
+  expect(html).toContain('class="media-equivalent"');
+  expect(html).not.toContain("rightsRef");
+  expect(html).not.toContain("private/qa-");
+});
+
+
+it("generates page hero fallback and project default share metadata without a visual share placement", () => {
+  for (const route of ["guides/getting-started/index.html", "about/index.html"]) {
+    const html = readFileSync(join(fixtureRoot, "dist", route), "utf8");
+    expect(html).toContain('property="og:image"');
+    expect(html).toContain('property="og:image:width" content="1200"');
+    expect(html).toContain('property="og:image:height" content="675"');
+    expect(html).toContain('name="twitter:image"');
+    expect(html).toContain('name="twitter:card" content="summary_large_image"');
+    expect(html).not.toContain('data-media-placement="share"');
+    expect(html).not.toContain("private/qa-");
+  }
+});
+
+
+it("rejects a final indexable build with no share references and no image fallback", () => {
+  const path = join(fixtureRoot, "src/data/media/media.json");
+  const original = readFileSync(path, "utf8");
+  const registered = JSON.parse(original);
+  writeFileSync(path, JSON.stringify({ assets: registered.assets, pages: [] }));
+  try {
+    expect(() => execFileSync("npm", ["run", "build"], { cwd: fixtureRoot, encoding: "utf8", stdio: "pipe", env: { ...process.env, NODE_ENV: "production" } })).toThrow(/share image.*required/i);
+  } finally {
+    writeFileSync(path, original);
+    execFileSync("npm", ["run", "build"], { cwd: fixtureRoot, encoding: "utf8", stdio: "pipe", env: { ...process.env, NODE_ENV: "production" } });
+  }
+}, 60_000);
+
+it.each(["url", "dimensions", "alt"])("rejects actual generated share metadata tampering: %s", field => {
+  const path = join(fixtureRoot, "dist/guides/getting-started/index.html");
+  const original = readFileSync(path, "utf8");
+  const property = field === "url" ? "og:image" : field === "dimensions" ? "og:image:width" : "og:image:alt";
+  const pattern = new RegExp(`(<meta property="${property}" content=")[^"]*(")`);
+  expect(original).toMatch(pattern);
+  const tampered = original.replace(pattern, '$1invalid-share-value$2');
+  writeFileSync(path, tampered);
+  try {
+    expect(() => execFileSync(join(fixtureRoot, "node_modules/.bin/tsx"), ["scripts/audit-build.ts"], { cwd: fixtureRoot, encoding: "utf8", stdio: "pipe" })).toThrow(/share metadata/i);
+  } finally { writeFileSync(path, original); }
+}, 30_000);

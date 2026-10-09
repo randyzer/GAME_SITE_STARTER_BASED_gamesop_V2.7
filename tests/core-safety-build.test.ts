@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { defineGameConfig } from "../src/config/schema";
-import { pageInventory, siteConfig } from "../src/core/site-data";
+import { siteConfig } from "../src/core/site-data";
 import {
   adoptFixtureConfig,
   cleanupCoreBuildFixture,
@@ -16,9 +16,17 @@ import {
 } from "./helpers/core-build-fixture";
 
 let fixtureRoot: string;
-const guide = pageInventory.find((page) => page.pageId === "guide.getting-started")!;
+const guide = { pageId: "guide.getting-started" };
 const identityConfig = defineGameConfig({
   ...adoptFixtureConfig(siteConfig),
+  brand: { name: "Field Notes", shortName: "Field", mark: "FN", logoPath: "/logo.svg", tagline: "Synthetic editorial QA project." },
+  navigation: { groups: [
+    { label: "Home", pageId: "home" },
+    { label: "Guides", pageId: "hub.guides", children: [guide.pageId] },
+    { label: "Search", pageId: "search" },
+  ] },
+  homepage: { featuredPageIds: [guide.pageId] },
+  features: { guides: true, heroes: false, weapons: false, items: false, maps: false, tierLists: false, news: false, search: true, calculator: false, planner: false },
   identity: {
     sitePublisher: {
       identity: { kind: "Organization", name: "Site Publisher", projectConfirmed: true, evidenceRef: "entity:site-publisher" },

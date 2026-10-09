@@ -13,6 +13,12 @@ class ElementStub {
   attributes: Record<string, string> = {};
   listeners: Record<string, (event: unknown) => void> = {};
   href = "";
+  hidden = false;
+  get isConnected(): boolean { return this.tag === "body" || Boolean(this.parentElement?.isConnected); }
+  remove() {
+    if (this.parentElement) this.parentElement.children = this.parentElement.children.filter((child) => child !== this);
+    this.parentElement = undefined;
+  }
   constructor(readonly tag: string, readonly classes: string[], readonly activate: (element: ElementStub) => void) {}
   append<T extends ElementStub>(child: T): T { child.parentElement = this; this.children.push(child); return child; }
   contains(element: unknown): boolean { return this === element || this.children.some((child) => child.contains(element)); }
@@ -34,14 +40,25 @@ class ElementStub {
   setAttribute(name: string, value: string) { this.attributes[name] = value; }
   removeAttribute(name: string) { delete this.attributes[name]; }
   addEventListener(name: string, listener: (event: unknown) => void) { this.listeners[name] = listener; }
-  getClientRects() { return [{}]; }
+  getClientRects(): object[] {
+    if (!this.isConnected || this.hidden || this.parentElement?.getClientRects().length === 0) return [];
+    if (this.parentElement instanceof DetailsStub && !this.parentElement.open && this.tag !== "summary") return [];
+    return [{}];
+  }
   focus() { this.activate(this); }
 }
 class DetailsStub extends ElementStub { open = false; }
 
-function fixture(withDesktop = true) {
+function fixture(withDesktop = true, initialMobile = true) {
+  const documentListeners: Record<string, (event: unknown) => void> = {};
+  const microtasks: Array<() => void> = [];
   let active: ElementStub;
-  const activate = (element: ElementStub) => { active = element; };
+  const activate = (element: ElementStub) => {
+    if (active === element) return;
+    documentListeners.focusout?.({ target: active, relatedTarget: element });
+    active = element;
+    documentListeners.focusin?.({ target: element });
+  };
   const element = (tag: string, ...classes: string[]) => new ElementStub(tag, classes, activate);
   const body = element("body"); active = body;
   const header = body.append(element("header", "site-header"));
@@ -61,19 +78,36 @@ function fixture(withDesktop = true) {
   const child = group.append(element("a")); child.href = "/guides/item/";
   child.attributes["data-nav-page-id"] = "guide.item";
   const main = body.append(element("main"));
-  const mode = { matches: true, change: () => {}, addEventListener: (_name: string, listener: () => void) => { mode.change = listener; } };
+  let matches = initialMobile;
+  const mode = {
+    get matches() { return matches; },
+    set matches(value: boolean) { matches = value; mobile.hidden = !value; desktop.hidden = value; },
+    change: () => {},
+    addEventListener: (_name: string, listener: () => void) => { mode.change = listener; },
+  };
+  mode.matches = initialMobile;
   runInNewContext(script ?? "", {
     Element: ElementStub, HTMLElement: ElementStub, HTMLDetailsElement: DetailsStub, URL,
-    document: { querySelector: (selector: string) => body.querySelector(selector), get activeElement() { return active; },
+    document: { body, documentElement: body,
+      addEventListener: (name: string, listener: (event: unknown) => void) => { documentListeners[name] = listener; },
+      querySelector: (selector: string) => body.querySelector(selector), get activeElement() { return active; },
       getElementById: (id: string) => id === "main-content" ? main : null },
     window: { location: { href: "https://field-notes.example/" }, matchMedia: () => mode },
-    getComputedStyle: () => ({ visibility: "visible" }),
+    queueMicrotask: (callback: () => void) => { microtasks.push(callback); },
+    getComputedStyle: (element: ElementStub) => ({ visibility: element.hidden ? "hidden" : "visible",
+      display: element.getClientRects().length ? "block" : "none" }),
   });
   const send = (name: string, target: ElementStub, key?: string) => {
     const event = { target, key, defaultPrevented: false, preventDefault: vi.fn(), stopPropagation: vi.fn() };
     mobile.listeners[name]?.(event); return event;
   };
-  return { mobile, group, summary, groupSummary, child, main, home, desktopParent, desktopChild, mode, send,
+  return { body, mobile, group, summary, groupSummary, child, main, home, desktopParent, desktopChild, mode, send,
+    browserBodyLoss: () => {
+      documentListeners.focusout?.({ target: active, relatedTarget: null });
+      active = body; // The recorded browser loss has no subsequent focusin to a user-chosen target.
+    },
+    flushMicrotasks: () => { while (microtasks.length) microtasks.shift()?.(); },
+    pointerOutside: () => { documentListeners.pointerdown?.({ target: main }); },
     get active() { return active; }, open: () => { mobile.open = true; group.open = true; } };
 }
 
@@ -125,6 +159,17 @@ describe("AX-01 local progressive enhancement", () => {
     expect(view.main.getAttribute("tabindex")).toBe("0");
   });
 
+  it("suppresses only exact current-URL reload so visible focus survives", () => {
+    const view = fixture(); view.open(); view.child.href = "/";
+    const event = view.send("click", view.child);
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(view.mobile.open).toBe(false); expect(view.group.open).toBe(false);
+    expect(view.active).toBe(view.home);
+    view.open(); view.child.href = "/#main-content";
+    expect(view.send("click", view.child).preventDefault).not.toHaveBeenCalled();
+    expect(view.active).toBe(view.main);
+  });
+
   it("maps hidden mobile child/group focus to desktop and reverses to the mobile trigger", () => {
     const view = fixture(); view.open(); view.child.focus(); view.mode.matches = false; view.mode.change();
     expect(view.active).toBe(view.desktopChild); expect(view.mobile.open).toBe(false); expect(view.group.open).toBe(false);
@@ -139,5 +184,69 @@ describe("AX-01 local progressive enhancement", () => {
     expect(view.active).toBe(view.home);
     const native = fixture(false); native.open();
     expect(native.mobile.listeners).toEqual({}); expect(native.mobile.open).toBe(true);
+  });
+});
+
+
+describe("breakpoint focus migration intent", () => {
+  it("recovers mobile page identity after browser BODY loss precedes MQL", () => {
+    const view = fixture(); view.open(); view.child.focus(); view.mode.matches = false;
+    view.browserBodyLoss(); view.flushMicrotasks(); view.mode.change();
+    expect(view.active).toBe(view.desktopChild);
+  });
+  it("recovers reverse identity after browser BODY loss precedes MQL", () => {
+    const view = fixture(true, false); view.desktopChild.focus(); view.mode.matches = true;
+    view.browserBodyLoss(); view.flushMicrotasks(); view.mode.change();
+    expect(view.active).toBe(view.summary);
+  });
+  it("does not steal outside focus on either crossing direction", () => {
+    for (const initialMobile of [true, false]) {
+      const view = fixture(true, initialMobile); view.open();
+      (initialMobile ? view.child : view.desktopChild).focus(); view.home.focus();
+      view.mode.matches = !initialMobile; view.mode.change(); expect(view.active).toBe(view.home);
+    }
+  });
+  it("revokes same-mode BODY loss before a later crossing", () => {
+    const view = fixture(); view.open(); view.child.focus(); view.browserBodyLoss(); view.flushMicrotasks();
+    view.mode.matches = false; view.mode.change(); expect(view.active).toBe(view.body);
+  });
+  it("bounds missing-target fallback to visible connected home", () => {
+    const view = fixture(); view.open(); view.child.focus(); view.desktopChild.remove();
+    view.mode.matches = false; view.browserBodyLoss(); view.mode.change(); expect(view.active).toBe(view.home);
+  });
+  it("leaves browser focus unchanged when missing target and home are unavailable", () => {
+    const view = fixture(); view.open(); view.child.focus(); view.desktopChild.remove(); view.home.hidden = true;
+    view.mode.matches = false; view.browserBodyLoss();
+    expect(() => view.mode.change()).not.toThrow(); expect(view.active).toBe(view.body);
+  });
+  it("uses the updated group and outer-trigger identities after Escape", () => {
+    const group = fixture(); group.open(); group.child.focus(); group.send("keydown", group.child, "Escape");
+    group.mode.matches = false; group.browserBodyLoss(); group.mode.change(); expect(group.active).toBe(group.desktopParent);
+    const outer = fixture(); outer.open(); outer.child.focus(); outer.send("keydown", outer.child, "Escape");
+    outer.send("keydown", outer.groupSummary, "Escape"); outer.mode.matches = false;
+    outer.browserBodyLoss(); outer.mode.change(); expect(outer.active).toBe(outer.home);
+  });
+  it("uses Menu identity after native ancestor close", () => {
+    const view = fixture(); view.open(); view.child.focus(); view.mobile.open = false; view.send("toggle", view.mobile);
+    expect(view.active).toBe(view.summary); view.mode.matches = false; view.browserBodyLoss(); view.mode.change();
+    expect(view.active).toBe(view.home);
+  });
+  it("does not reuse a removed outgoing semantic source", () => {
+    const view = fixture(); view.open(); view.child.focus(); view.child.remove(); view.mode.matches = false;
+    view.browserBodyLoss(); view.mode.change(); expect(view.active).toBe(view.body);
+  });
+  it("does not migrate or close disclosures for unchanged media mode", () => {
+    const view = fixture(); view.open(); view.child.focus(); view.mode.change();
+    expect(view.active).toBe(view.child); expect(view.mobile.open).toBe(true); expect(view.group.open).toBe(true);
+  });
+  it("respects outside pointer intent even if the old nav still has live focus", () => {
+    const view = fixture(); view.open(); view.child.focus(); view.pointerOutside(); view.mode.matches = false;
+    view.mode.change(); expect(view.active).toBe(view.child); // The controller performs no focus call.
+  });
+  it("does not let an old microtask erase the newly migrated identity", () => {
+    const view = fixture(); view.open(); view.child.focus(); view.mode.matches = false;
+    view.browserBodyLoss(); view.mode.change(); view.flushMicrotasks(); expect(view.active).toBe(view.desktopChild);
+    view.mode.matches = true; view.browserBodyLoss(); view.flushMicrotasks(); view.mode.change();
+    expect(view.active).toBe(view.summary);
   });
 });

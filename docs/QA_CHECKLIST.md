@@ -1,4 +1,4 @@
-# GAME_SITE_STARTER v2.6.5 Documentation-Correction Patch Line QA Checklist
+# GAME_SITE_STARTER V2.7 Candidate QA Checklist
 
 Use this checklist after changing config, Runtime Page Inventory, content,
 facts, tools, media, theme, dependencies, or presentation components.
@@ -16,10 +16,37 @@ prove that content is useful or accurate, that media is visually appropriate,
 or that the operator has legal reuse rights. Human review remains a release
 gate.
 
+## V2.7 evidence levels and input preflight
+
+Follow the [current SOP interpretation](../../GAME_SOP_V2.7/docs/NEW_GAME_SITE_SOP_v2.7.md#v27-current-execution-interpretation).
+Candidate is not release identity; inherited V2.6.5 Git provenance above remains
+historical. Select checks by changed behavior, not by temporary workstream state.
+
+| Level | Apply this checklist as |
+| --- | --- |
+| Ordinary slice | Exact source + allowed diff + targeted positive/negative checks; `npm run check` for code/behavior changes; relevant browser only. Prose-only changes use document/diff checks. Reuse still-valid unchanged evidence; no routine all47/all41/synthetic references/workspace-wide hashes. |
+| Workstream / adoption TECH | Full applicable check and actual input validate/build/output audit; representative browser surfaces where relevant; independently reviewed scoped evidence and explicit failures/missing coverage. |
+| Final product / release | Complete applicable final pipeline and all remaining release checklist, browser matrix/real Safari, Human visual/rights/legal/operator/ads, REF/adoption,41/41/delta and triad compatibility requirements. |
+
+- [ ] Inventory pageId/route/trimmed case-insensitive primaryKeyword values are unique across all records; title20–65 and description50–170 characters follow the existing schema, not new limits.
+- [ ] Enabled pages, features, contentRef and actual content agree; no stale example/source-template output or fabricated game facts.
+- [ ] Published pages have publishedAt; updatedAt >= publishedAt. Sources accessedAt projects to sourceCheckedAt, never verifiedAt; patch/version remains separate. No generic live-state input is required.
+- [ ] Canonical configuration, actual preview URL and final authorized owned origin are distinguished. Reserved `.example` is evidence-only; absolute breadcrumbs are actually checked, not assumed to return to the local preview.
+- [ ] Existing Manifest and unique Media Decision Table agree with rendered media/no-media state; sourceUrl/rightsRef never imply rights or Human suitability approval.
+- [ ] Default-source/synthetic qualification is identified separately from the actual adopted copy. Default-fixture failures remain FAIL, not an exemption or source-only PASS; final adopted `npm run check` remains required.
+- [ ] Every bounded command has its actual exit/warnings/errors. `build:evidence` and its marker never satisfy canonical final `npm run build` or Human acceptance.
+- [ ] Clean-copy reproduction uses the pinned runtime and lockfile with `npm ci`; temporary dependency links are not delivery artifacts. Preserve relevant raw evidence without secrets, caches or modules.
+
+The full raw browser matrix and separate Safari closure policy below remain
+strict when their browser/release scope is being evaluated. Missing Safari blocks
+applicable AX/assembled/release acceptance, not unrelated non-browser work.
+No disabled feature, no-media record, minimal guide or build success establishes
+full commercial coverage, game recognition, operator ownership or release PASS.
+
 ## Record provenance first
 
 - [ ] Record the source Starter commit and working branch.
-- [ ] Record the `GAME_SOP v2.6.5` package/reference used for production methodology.
+- [ ] Record the exact selected V2.7 SOP package/reference; retain predecessor provenance separately.
 - [ ] Record the current Master Prompt version.
 - [ ] Record any known version mismatch instead of silently rewriting upstream
       documents.
@@ -243,6 +270,16 @@ Inventory merely to manufacture a state.
 
 ## Starter adoption smoke test
 
+- [ ] Root `npm run check` passes every existing test file without skips.
+- [ ] `npm run verify:unadopted-final` proves validate and final build reject the
+      shipped example specifically with PP-02, in a disposable full copy.
+- [ ] `npm run verify:adopted-final` runs real validate/check/build on the neutral
+      Field Notes full copy; all return zero, with no final evidence marker or
+      unapproved privacy/terms routes. The copy is cleaned up.
+- [ ] CI uses the same gates; package-lock and production Core stay unchanged.
+- [ ] These synthetic results do not replace real-project/human adoption QA.
+      AX-01 actual browser evidence remains pending WS-06A.
+
 Use a disposable isolated copy, never the canonical working tree:
 
 - [ ] Copy the Starter at the candidate baseline commit.
@@ -374,3 +411,65 @@ Record, at minimum:
 
 The automated agent does not declare the Starter released. A human owns the
 final release decision.
+
+## WS-06A Core browser evidence
+
+- [ ] Actual package.json provides check:browser; exact dev-only playwright 1.63.0 and all three real engines are installed.
+- [ ] Run npm run check, verify:unadopted-final and verify:adopted-final before check:browser; all existing suites remain active.
+- [ ] Raw qualification: all47 cases execute (27 baseline/3 no-JS/12 boundary/4 reduced-motion/1 resize),0 skip/NOT_RUN; strict raw PASS additionally requires0 FAIL. For finite workstream closure follow the separate policy below.
+- [ ] Real engine version/revision, current uncommitted source, fixture source and final build bind every row to one build. Record canonical Contract identity using the actual supported input mode.
+- [ ] Verify true HTTP404 recovery, document overflow <=1 CSS px, keyboard-accessible local .table-scroll, original heading/main/skip/footer paths, <=900 navigation and <=620 actual header/meta/404 changes.
+- [ ] Verify Tab/Shift+Tab/Enter/Space/Escape, native no-JS nested anchors, ancestor cleanup and live 899→901→899 child-focus migration. Check reduced-motion scroll/animations and 44x44 mobile target intent.
+- [ ] Cleanup must stop preview/browsers and remove the disposable fixture; preserve failed-run evidence in a distinct directory.
+- [ ] Machine focus outlines and target geometry do not replace human visual focus/contrast approval. AX-02 human, AX-03 assembled, PA-01, REF/real-project and V2.7 release outcomes remain unclaimed.
+
+Full method: CORE_BROWSER_EVIDENCE.md. Unsupported raw-table authoring is outside this test scope; never add test CSS or bypass safety to produce PASS.
+
+Contract evidence mode: default FILE_SHA256 requires the real accepted SOP Contract file and exact observed hash; missing/mismatched file fails without automatic fallback. Standalone Core CI explicitly uses PINNED_REFERENCE with null filePath/observedSha256 and does not verify SOP bytes or triad compatibility. A cross-artifact/independent V2.7 acceptance gate requires FILE_SHA256; reference-only evidence is insufficient and must HARD STOP there.
+
+## WS-06A WebKit verification policy V1 — separate closure evidence
+
+The canonical Contract and its capability requirements remain unchanged. `check:browser` and `validateBrowserEvidence` retain the strict raw 47/47 PASS gate. Every one of the 47 matrix cases must execute, with no skip/NOT_RUN/missing assertion. Preserve each original FAIL and every historical evidence file. A policy disposition never changes a raw row to PASS, N/A, SKIP or an exception.
+
+The selected Starter must actually supply `verify:browser-closure`; inspect package.json rather than infer availability. This separate command can find the finite Core workstream **eligible for independent closure review** through either strict raw 47/47 PASS, or complete raw execution with only the exact accepted WebKit26.6/rev2359/darwin-arm64 input-profile failures plus complete independent Safari keyboard evidence. It is not automatic WS-06A acceptance. Chromium/Firefox failures, unknown infrastructure/failure details, missing or invalid evidence and stale source/build/engine identity fail closed. CI and the raw browser command remain strict and unchanged.
+
+Plain-Tab dependent failures must match the accepted prerequisite failure detail and a bound native link-traversal probe, classified `ENVIRONMENT_PROFILE_BLOCKED`. A failed local table scroll must still prove focused wrapper, genuine overflow, no document overflow, received ArrowRight and unchanged native scroll; the pinned accepted 10-process control supports only `PRODUCT_EVIDENCE_UNRESOLVED`. Neither disposition is a product PASS. Pin policy ID `WS06A_WEBKIT_VERIFICATION_V1`, accepted proposal SHA256 `2696a9d7ee691fad07ea7b557a4acab706bb408ea0c5583c3bfe7bd5fb85d917`, and ArrowRight control SHA256 `1ff999e08c3c93d93baaca8260bee8c243c3e2367552e58ae9550473bc741344`.
+
+Supplemental proof must cover exactly every failed case/assertion, with matching route/viewport/JS, Starter/source and independently captured manual fixture/final-dist identity. Record Safari/WebKit version, host, operator/date, real keys, observable focus/results and evidence artifacts. Accept only `HUMAN_PHYSICAL_KEYBOARD` or specifically authorized trusted system keyboard, never Playwright, injected events, programmatic focus/scroll, Option/Alt workarounds or changed Safari/macOS keyboard preferences. ArrowRight must genuinely move the table. The no-JS case must genuinely disable JavaScript; JS-enabled proof cannot substitute. A manifest declaration or synthesized positive unit fixture is not proof of real execution; an independent reviewer must inspect actual records/artifacts.
+
+Human visual focus quality/contrast remains DEFERRED until separately reviewed. Core closure never completes AX-01/02/03 capability outcomes, assembled AX-03/PA-01, WS-06B, REF suites, WS-07 real adoption or release. Registry/outcome values are unchanged. Missing real Safari proof keeps WS-06A BLOCKED even when the policy implementation itself passes engineering tests.
+
+
+## V2.7 WS03D search boundary
+
+This bounded search slice keeps `features.search` as the sole technical activation flag. The Core `SearchProvider` interface returns public `SearchResult[]`; completed outcomes distinguish results, empty and error. Pagefind remains the current implementation behind `pagefind-search-adapter.ts`, including its existing first20-hit and safe local result normalization. The UI owns form/history, request identity, loading and rendering; idle does not require provider loading and says “Local site search,” never claiming an unavailable index is online. Older requests cannot overwrite newer submissions.
+
+Pagefind1.5.2, the800000-byte normalized payload budget, required artifact contract and optional UI deletion policy remain fixed. Optional UI reference safety inspects both finite runtime source files: SearchIsland and the Pagefind adapter. References in either file block normalization. No alternate provider, remote service, ranking feature, analytics or query logging is introduced.
+
+Each adopting project must record its search decision outside Core config:
+
+- Decision: ENABLED or DISABLED.
+- Rationale and corpus/task basis, with a named decision owner and evidence reference.
+- The technical `features.search` value must agree with that decision. No duplicate activation boolean and no invented corpus-size claims.
+- Enabled search requires actual result/empty/error browser evidence and useful local results; a working provider alone does not prove that search should be enabled.
+- Disabled search requires no search route/UI and no navigation targeting the excluded page. Pagefind build artifacts need not disappear in this slice.
+
+Mechanism/state evidence does not establish ranking quality, real-player demand, corpus usefulness or project decision appropriateness. Actual project binding belongs to Adaptation/Acceptance. Freshness/date/patch/verified/Popular/Live semantics are a separate slice.
+
+
+## V2.7 WS03D freshness truth
+
+The bounded freshness slice keeps four facts distinct:
+
+- `publishedAt`: first page publication date.
+- `updatedAt`: editorial/content update date; when publication exists it must not be earlier. Invalid ordering is rejected, never swapped or auto-corrected.
+- Fact/tool `patch` or version context: recorded game/content version, independent of dates.
+- Provenance `accessedAt`: when a source was checked/accessed, displayed as “Sources checked”; it does not establish an independent verification event.
+
+`liveStatus / observed-live / not-live` are **DEFERRED**, outside Active V2.7 Core. Do not author `liveStatus` in Page Inventory or move live-state fields into another schema. The strict inventory schema rejects the retired field; no compatibility adapter or replacement live model is provided. Never infer live state from publication status, update date or patch. Do not add verifiedAt or invent real-time telemetry. General provenance evidenceNote privacy rules remain unchanged.
+
+The pure freshness projection exposes publishedAt, updatedAt, sourceCheckedAt and optional versionContext. Source accessedAt projects to sourceCheckedAt, never verifiedAt. Wiki and editorial metadata preserve Published and Last updated separately; source access no longer claims “Last verified”. Static entity facts say “Recorded version”/recorded patch, not an unsupported current-game claim. Existing tool patch/formula wording remains bounded and unchanged. SEO datePublished/dateModified continue to use the original page publication/update authority, never source access.
+
+Latest updates is ordered deterministically by recorded page update date and the existing priority tie-break, with that basis shown adjacent to the title. Future Popular/Trending/Latest/Live labels must state explicit editorial or data provenance. Static labels may not imply telemetry they lack. Page Inventory provides no live-state model. Synthetic freshness rendering proves only the mechanism, never actual game currency or a real project's FR-01/FR-02 outcome.
+
+Actual project observation/evidence appropriateness remains Adaptation/Acceptance work.

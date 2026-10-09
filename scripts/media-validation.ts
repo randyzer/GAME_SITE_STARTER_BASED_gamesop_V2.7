@@ -1,6 +1,9 @@
 import { realpathSync, statSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 
+import { resolveShareMetadata } from "../src/core/seo";
+import type { ImageAsset } from "../src/data/schemas/media";
+import { resolveMediaPresentation } from "../src/core/media-presentation";
 import type { GameConfig } from "../src/config/schema";
 import type { ResolvedPageMedia } from "../src/data/media/catalog";
 import type { MediaAsset } from "../src/data/schemas/media";
@@ -66,13 +69,17 @@ function attributes(tag: string): Map<string, string> {
   ]));
 }
 
-function openingTags(html: string, name: "img" | "iframe" | "video" | "a"): string[] {
+function openingTags(html: string, name: "img" | "iframe" | "video" | "a" | "meta"): string[] {
   // Astro preserves > inside quoted attributes; it is not a tag boundary there.
   return html.match(new RegExp(`<${name}\\b(?:[^"'<>]|"[^"]*"|'[^']*')*>`, "g")) ?? [];
 }
 
 export interface ChromeHtmlValidationConfig {
   logoPath?: string;
+}
+
+function normalizeVisibleText(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
 }
 
 function tagText(html: string): string {
@@ -171,6 +178,14 @@ export function collectMediaHtmlErrors(
       continue;
     }
     const body = match[2];
+    const presentation = resolveMediaPresentation(asset);
+    const decodeText = (text: string) => attributes(`value="${text.replace(/"/g, "&quot;")}"`).get("value") ?? "";
+    if (decodeText(body).includes(asset.rightsRef) || /\bright[s]?Ref\b/.test(body + match[1])) errors.push(`Media ${id} exposes private rights evidence.`);
+    if (presentation.publicCredit) {
+      const credit = body.match(/<span\b[^>]*class="media-credit"[^>]*>([\s\S]*?)<\/span>/)?.[1];
+      if (!credit || normalizeVisibleText(decodeText(tagText(credit))) !== normalizeVisibleText(presentation.publicCredit.text) ||
+          (presentation.publicCredit.url && !openingTags(credit, "a").some(tag => attributes(tag).get("href") === presentation.publicCredit!.url))) errors.push(`Media ${id} public credit does not match its asset.`);
+    }
     if (!frame.get("class")?.split(/\s+/).includes("game-media")) errors.push(`Media ${id} lacks its responsive figure class.`);
     const sourceLinks = openingTags(body, "a").map((link) => attributes(link).get("href"));
     if (!sourceLinks.includes(asset.sourceUrl)) errors.push(`Media ${id} is missing its provenance link.`);
@@ -178,10 +193,19 @@ export function collectMediaHtmlErrors(
       const images = openingTags(body, "img");
       const attrs = attributes(images[0] ?? "");
       if (images.length !== 1 || attrs.get("src") !== asset.src) errors.push(`Media ${id} image src does not match its asset.`);
+      if (attrs.get("width") !== String(presentation.dimensions.width) || attrs.get("height") !== String(presentation.dimensions.height)) errors.push(`Media ${id} intrinsic image dimensions do not match its asset.`);
       if (!localFileExists(asset.src)) errors.push(`Media ${id} local image file is missing: ${asset.src}`);
       if (!attrs.has("alt") || attrs.get("alt") !== asset.alt) errors.push(`Media ${id} alt does not match its asset.`);
       if (!["eager", "lazy"].includes(attrs.get("loading") ?? "") || attrs.get("decoding") !== "async") errors.push(`Media ${id} image loading contract is invalid.`);
     } else {
+      const wrapper = body.match(/<div\b(?:[^"'<>]|"[^"]*"|'[^']*')*>/)?.[0] ?? "";
+      const style = attributes(wrapper).get("style") ?? "";
+      if (!style.split(";").some(declaration => declaration.trim() === `--media-aspect-ratio: ${presentation.ratio.width} / ${presentation.ratio.height}`)) errors.push(`Media ${id} video ratio does not match its dimensions.`);
+      const equivalent = presentation.videoEquivalent!;
+      const equivalentHtml = body.match(/<p\b[^>]*class="media-equivalent"[^>]*>([\s\S]*?)<\/p>/)?.[1];
+      const equivalentText = equivalent.kind === "text" ? equivalent.text : equivalent.label;
+      if (!equivalentHtml || normalizeVisibleText(decodeText(tagText(equivalentHtml))) !== normalizeVisibleText(equivalentText) ||
+          (equivalent.kind === "link" && !openingTags(equivalentHtml, "a").some(tag => attributes(tag).get("href") === equivalent.href))) errors.push(`Media ${id} accessible equivalent does not match its asset.`);
       if (asset.src.startsWith("/media/")) {
         const videos = openingTags(body, "video");
         const attrs = attributes(videos[0] ?? "");
@@ -214,5 +238,40 @@ export function collectMediaHtmlErrors(
       if (sections.length !== expectedCount || JSON.stringify(ids) !== JSON.stringify(expectedAssets.map((asset) => asset.id))) errors.push(`Media ${placement} output does not match the page mapping.`);
     }
   }
+  return errors;
+}
+
+
+export function collectShareHtmlErrors(
+  html: string,
+  config: GameConfig,
+  image: ImageAsset | undefined,
+  localFileExists: (src: string) => boolean,
+  required: boolean,
+): string[] {
+  const errors: string[] = [];
+  const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/)?.[1] ?? "";
+  const tags = openingTags(head, "meta").map(attributes);
+  const expected = resolveShareMetadata(config, image);
+  if (!expected) {
+    if (required) errors.push("Share image is required for final indexable output.");
+    if (tags.some(tag => tag.get("property") === "og:image" || tag.get("name") === "twitter:image")) errors.push("Share metadata has no resolved manifest image.");
+    return errors;
+  }
+  const fields = [
+    ["property", "og:image", expected.url],
+    ["property", "og:image:width", String(expected.width)],
+    ["property", "og:image:height", String(expected.height)],
+    ["property", "og:image:alt", expected.alt],
+    ["name", "twitter:image", expected.url],
+    ["name", "twitter:image:alt", expected.alt],
+    ["name", "twitter:card", "summary_large_image"],
+  ];
+  for (const [attribute, field, value] of fields) {
+    const matches = tags.filter(tag => tag.get(attribute) === field);
+    if (matches.length !== 1 || matches[0].get("content") !== value) errors.push(`Share metadata ${field} must match its resolved manifest image exactly once.`);
+  }
+  if (!localFileExists(image!.src)) errors.push(`Share image local output file is missing: ${image!.src}`);
+  if (head.includes(image!.rightsRef) || tags.some(tag => tag.get("name") === "rightsRef" || tag.get("property") === "rightsRef")) errors.push("Share metadata exposes private rights evidence.");
   return errors;
 }

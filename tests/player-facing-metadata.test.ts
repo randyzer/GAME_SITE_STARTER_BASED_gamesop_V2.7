@@ -145,3 +145,18 @@ describe("player-facing metadata", () => {
     },
   );
 });
+
+
+it("does not equate source access with verification or recorded patch with current game version", () => {
+  for (const url of [componentUrls.editorialArticle, componentUrls.wikiArticle]) {
+    expect(template(url)).not.toContain("Last verified");
+    expect(template(url)).toContain("Sources checked");
+  }
+  const sources = readFileSync(new URL("../src/components/wiki/Sources.astro", import.meta.url), "utf8");
+  expect(sources).not.toContain("Last verified");
+  expect(sources).toContain("Sources checked");
+  const detail = template(componentUrls.entityDetail);
+  expect(detail).not.toMatch(/Current version|Current patch/);
+  expect(detail).toContain("Recorded version");
+  expect(detail).toContain("Recorded patch");
+});

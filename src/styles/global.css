@@ -3,10 +3,10 @@
 @import "./page-families.css";
 
 :root {
-  --display: "Iowan Old Style", "Baskerville", "Times New Roman", serif;
-  --body: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
-  --mono: "SFMono-Regular", "Cascadia Mono", "Liberation Mono", monospace;
-  --shell: min(1180px, calc(100vw - 48px));
+  --display: var(--role-font-display);
+  --body: var(--role-font-body);
+  --mono: var(--role-font-utility);
+  --shell: min(1180px, calc(100vw - var(--role-shell-gutter)));
 }
 
 * {
@@ -462,8 +462,8 @@ select:focus-visible {
 }
 
 .portal-start__link:hover {
-  box-shadow: 7px 7px 0 var(--color-accent);
-  transform: translate(-4px, -4px);
+  box-shadow: var(--role-start-hover-shadow);
+  transform: var(--role-start-hover-transform);
 }
 
 .portal-start__link > span:first-child {
@@ -496,7 +496,7 @@ select:focus-visible {
 }
 
 .portal-section {
-  padding-block: clamp(68px, 9vw, 120px);
+  padding-block: var(--role-section-spacing);
   border-bottom: 1px solid var(--color-border-strong);
 }
 
@@ -522,7 +522,7 @@ select:focus-visible {
   display: flex;
   min-width: 0;
   min-height: 270px;
-  padding: 26px;
+  padding: var(--role-card-padding);
   overflow-wrap: anywhere;
   border: 1px solid var(--color-border-strong);
   flex-direction: column;
@@ -533,8 +533,8 @@ select:focus-visible {
 
 .portal-card:hover {
   border-color: var(--page-accent, var(--color-accent));
-  box-shadow: 7px 7px 0 color-mix(in srgb, var(--color-text) 10%, transparent);
-  transform: translate(-3px, -3px);
+  box-shadow: var(--role-card-hover-shadow);
+  transform: var(--role-card-hover-transform);
 }
 
 .portal-card__index {
@@ -643,7 +643,7 @@ select:focus-visible {
 
 .button {
   display: inline-flex;
-  min-height: 48px;
+  min-height: var(--role-control-min-height);
   align-items: center;
   justify-content: center;
   gap: 28px;
@@ -659,8 +659,8 @@ select:focus-visible {
 }
 
 .button:hover {
-  box-shadow: 5px 5px 0 var(--color-text);
-  transform: translate(-3px, -3px);
+  box-shadow: var(--role-button-hover-shadow);
+  transform: var(--role-button-hover-transform);
 }
 
 .button--primary {
@@ -1044,6 +1044,7 @@ select:focus-visible {
 }
 
 .prose {
+  min-width: 0;
   max-width: 750px;
   grid-column: 2;
   font-family: var(--display);
@@ -1187,7 +1188,7 @@ select:focus-visible {
 
 .video-embed {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--media-aspect-ratio);
   background: var(--color-text);
 }
 
@@ -2241,7 +2242,7 @@ select:focus-visible {
 
 @media (max-width: 900px) {
   :root {
-    --shell: min(100% - 36px, 720px);
+    --shell: min(100% - var(--role-shell-gutter), 720px);
   }
 
   .desktop-nav {
@@ -2338,7 +2339,7 @@ select:focus-visible {
 
 @media (max-width: 620px) {
   :root {
-    --shell: calc(100% - 28px);
+    --shell: calc(100% - var(--role-shell-gutter));
   }
 
   .site-header__inner {
@@ -2373,7 +2374,7 @@ select:focus-visible {
 
   .portal-card {
     min-height: 230px;
-    padding: 22px;
+    padding: var(--role-card-padding);
   }
 
   .hero__actions {
@@ -2509,4 +2510,27 @@ select:focus-visible {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+
+.button,
+.mobile-nav__toggle {
+  border-radius: var(--role-control-radius);
+}
+
+.desktop-nav__menu,
+.mobile-nav__panel,
+.portal-start__link,
+.portal-card {
+  border-radius: var(--role-surface-radius);
+}
+
+.game-media img,
+.game-media video {
+  border-radius: var(--role-media-radius);
+}
+
+:root[data-theme-state="quiet"] .button:hover,
+:root[data-theme-state="quiet"] .portal-start__link:hover {
+  border-color: var(--color-accent-strong);
 }

@@ -111,6 +111,9 @@ function createPagefindFixture(options: PagefindFixtureOptions = {}) {
     'const pagefindPath = "/pagefind/pagefind.js";\n',
   );
 
+  mkdirSync(join(projectRoot, "src/core"), { recursive: true });
+  writeFileSync(join(projectRoot, "src/core/pagefind-search-adapter.ts"), 'const pagefindPath = "/pagefind/pagefind.js";\n');
+
   const baseSizes = {
     loader: 45_555,
     worker: 41_255,
@@ -299,6 +302,20 @@ describe("Pagefind 1.5.2 artifact contract", () => {
       outputDirectory: fixture.outputDirectory,
       installedVersion: "1.5.2",
     })).toThrow(/pagefind-component-ui\.js.*referenced|reference safety/i);
+  });
+
+  it("fails closed and deletes nothing when the Pagefind adapter references optional UI", () => {
+    const fixture = createPagefindFixture({ optionalUi: true });
+    writeFileSync(join(fixture.projectRoot, "src/core/pagefind-search-adapter.ts"), 'import("/pagefind/pagefind-ui.js");\n');
+    expect(() => normalizePagefindOutput({ projectRoot: fixture.projectRoot, outputDirectory: fixture.outputDirectory, installedVersion: "1.5.2" })).toThrow(/pagefind-ui\.js.*referenced|reference safety/i);
+    expect(PAGEFIND_OPTIONAL_UI_FILES.every(file => existsSync(join(fixture.pagefindDirectory, file)))).toBe(true);
+  });
+
+  it("fails closed when the finite provider adapter source cannot be inspected", () => {
+    const fixture = createPagefindFixture({ optionalUi: true });
+    rmSync(join(fixture.projectRoot, "src/core/pagefind-search-adapter.ts"));
+    expect(() => normalizePagefindOutput({ projectRoot: fixture.projectRoot, outputDirectory: fixture.outputDirectory, installedVersion: "1.5.2" })).toThrow(/runtime|adapter|reference safety/i);
+    expect(PAGEFIND_OPTIONAL_UI_FILES.every(file => existsSync(join(fixture.pagefindDirectory, file)))).toBe(true);
   });
 
   it("fails closed when required runtime or locale artifacts are missing", () => {

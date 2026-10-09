@@ -1,4 +1,5 @@
 ---
+import { resolveMediaPresentation } from "../../core/media-presentation";
 import { isLocalVideoPath, videoAssetSchema, type VideoAsset } from "../../data/schemas/media";
 
 interface Props {
@@ -6,11 +7,13 @@ interface Props {
 }
 
 const asset = videoAssetSchema.parse(Astro.props.asset);
+const presentation = resolveMediaPresentation(asset);
+const equivalent = presentation.videoEquivalent!;
 const isLocalVideo = isLocalVideoPath(asset.src);
 ---
 
 <figure class="game-media game-media--video" data-media-id={asset.id}>
-  <div class="video-embed">
+  <div class="video-embed" style={`--media-aspect-ratio: ${presentation.ratio.width} / ${presentation.ratio.height}`}>
     {isLocalVideo ? (
       <video
         src={asset.src}
@@ -31,8 +34,10 @@ const isLocalVideo = isLocalVideoPath(asset.src);
       />
     )}
   </div>
+  <p class="media-equivalent">{equivalent.kind === "text" ? equivalent.text : <a href={equivalent.href} rel="noreferrer">{equivalent.label}</a>}</p>
   <figcaption>
     {asset.caption && <span>{asset.caption}</span>}
-    <a href={asset.sourceUrl} rel="noreferrer">Video source <span aria-hidden="true">↗</span></a>
+    {presentation.publicCredit && <span class="media-credit">{presentation.publicCredit.url ? <a href={presentation.publicCredit.url} rel="noreferrer">{presentation.publicCredit.text}</a> : presentation.publicCredit.text}</span>}
+    <a href={presentation.source.url} rel="noreferrer">{presentation.source.label} <span aria-hidden="true">↗</span></a>
   </figcaption>
 </figure>

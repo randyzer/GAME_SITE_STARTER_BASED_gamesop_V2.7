@@ -1,12 +1,15 @@
 ---
+import { mediaCatalog } from "../data/media/catalog";
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import { siteConfig } from "../core/site-data";
+import { resolveVisualRoles } from "../core/theme-roles";
 import {
   buildBaseSeoGraph,
   buildCanonicalUrl,
   collectStructuredIdentityErrors,
   serializeJsonLd,
+  resolveShareMetadata,
   type StructuredDataNode,
 } from "../core/seo";
 import type { PageInventoryEntry } from "../data/schemas/page-inventory";
@@ -18,6 +21,8 @@ interface Props {
 }
 
 const { page, structuredData } = Astro.props;
+const roles = resolveVisualRoles(siteConfig.visualRoles);
+const share = resolveShareMetadata(siteConfig, mediaCatalog.getShareMedia(page.pageId));
 const canonical = buildCanonicalUrl(siteConfig, page.route);
 const robots =
   page.indexability === "index"
@@ -44,7 +49,13 @@ if (identityErrors.length > 0) {
 ---
 
 <!doctype html>
-<html lang={siteConfig.site.locale}>
+<html
+  lang={siteConfig.site.locale}
+  data-theme-font={roles.font}
+  data-theme-density={roles.density}
+  data-theme-shape={roles.shape}
+  data-theme-state={roles.state}
+>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
@@ -61,7 +72,15 @@ if (identityErrors.length > 0) {
     <meta property="og:url" content={canonical} />
     <meta property="og:title" content={page.title} />
     <meta property="og:description" content={page.description} />
-    <meta name="twitter:card" content="summary" />
+    {share && <>
+      <meta property="og:image" content={share.url} />
+      <meta property="og:image:width" content={String(share.width)} />
+      <meta property="og:image:height" content={String(share.height)} />
+      <meta property="og:image:alt" content={share.alt} />
+      <meta name="twitter:image" content={share.url} />
+      <meta name="twitter:image:alt" content={share.alt} />
+    </>}
+    <meta name="twitter:card" content={share ? "summary_large_image" : "summary"} />
     <meta name="twitter:title" content={page.title} />
     <meta name="twitter:description" content={page.description} />
     {siteConfig.social.xHandle && (

@@ -65,7 +65,24 @@ Unknown format/version, corrupt bytes, missing declared files or incomplete
 route/document/asset/search coverage fails closed. Upgrading Pagefind requires
 review of this adapter as well as the existing artifact contract.
 
-## Evidence mode
+## Dual CI adoption contract
+
+After the root `npm run check`, CI runs `npm run verify:unadopted-final` and
+`npm run verify:adopted-final`. Both operate in disposable complete project copies.
+The unadopted gate requires both validate and final build to fail specifically
+with PP-02; unexpected success, unrelated failure or an incomplete child command
+fails the verifier. Expected failure is asserted, never ignored.
+
+The adopted gate reuses synthetic Field Notes branding and the existing neutral
+content mutation, then runs actual validate/check/final build. All must succeed;
+the final evidence marker and unapproved privacy/terms routes must be absent.
+This portable pipeline proof does not approve a real game's content, identity,
+legal policy, media rights or human/browser quality. `STARTER_ADOPTION_FIXTURE`
+only selects a test expectation in the disposable adopted check; production
+validation/audit never reads it. Existing PP-02 negative tests remain active.
+`build:evidence` cannot satisfy canonical final acceptance.
+
+## Evidence mode behavior
 
 The build orchestrator explicitly passes `--purpose final|evidence` to the same
 last audit stage. Standalone audit defaults to final. Evidence mode downgrades

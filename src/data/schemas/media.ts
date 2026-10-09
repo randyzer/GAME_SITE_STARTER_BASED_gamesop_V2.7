@@ -59,13 +59,41 @@ const descriptiveTextSchema = z
     "Use descriptive alt text, not a generic label or filename.",
   );
 
+const httpsUrlSchema = z.url().refine(
+  (value) => /^https:\/\//i.test(value) && URL.canParse(value) && new URL(value).protocol === "https:",
+  { message: "Media URL must use HTTPS." },
+);
+const dimensionsSchema = z.object({
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+}).strict();
+const creditSchema = z.object({
+  text: z.string().trim().min(1),
+  url: httpsUrlSchema.optional(),
+}).strict();
+
+function isSafeEquivalentPath(value: string): boolean {
+  return value.startsWith("/") && !value.startsWith("//") &&
+    !/[\\%?#\s]/.test(value) &&
+    value.slice(1).split("/").every(segment => segment !== "." && segment !== ".." && /^[a-z0-9._-]*$/i.test(segment));
+}
+const accessibleEquivalentSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("text"), text: z.string().trim().min(1) }).strict(),
+  z.object({
+    kind: z.literal("link"),
+    label: z.string().trim().min(1),
+    href: z.union([httpsUrlSchema, z.string().refine(isSafeEquivalentPath, "Use a safe root-relative path or HTTPS URL.")]),
+  }).strict(),
+]);
+
 const commonAssetShape = {
   id: mediaIdSchema,
   caption: z.string().trim().min(1).optional(),
-  sourceUrl: z.url().refine(
-    (value) => /^https:\/\//i.test(value) && URL.canParse(value) && new URL(value).protocol === "https:",
-    { message: "Media sourceUrl must use HTTPS." },
-  ),
+  sourceUrl: httpsUrlSchema,
+  dimensions: dimensionsSchema,
+  // An evidence pointer is required; it never implies rights approval.
+  rightsRef: z.string().trim().min(1),
+  credit: creditSchema.optional(),
 };
 
 export const imageAssetSchema = z
@@ -93,6 +121,7 @@ export const videoAssetSchema = z
       "Video poster must be a safe local image path under /media/.",
     ).optional(),
     alt: descriptiveTextSchema,
+    accessibleEquivalent: accessibleEquivalentSchema,
   })
   .strict()
   .superRefine((asset, context) => {
@@ -116,6 +145,7 @@ const pageMediaSchema = z
     hero: mediaIdSchema.optional(),
     gallery: z.array(mediaIdSchema).optional(),
     trailer: mediaIdSchema.optional(),
+    share: mediaIdSchema.optional(),
   })
   .strict();
 
@@ -123,6 +153,7 @@ export const mediaManifestSchema = z
   .object({
     assets: z.array(mediaAssetSchema),
     pages: z.array(pageMediaSchema),
+    defaultShare: mediaIdSchema.optional(),
   })
   .strict()
   .superRefine((manifest, context) => {
@@ -139,6 +170,18 @@ export const mediaManifestSchema = z
       }
       assets.set(asset.id, asset);
     });
+
+    function checkShareReference(id: string, path: (string | number)[]) {
+      const asset = assets.get(id);
+      if (!asset || asset.type !== "image" || asset.alt === "") {
+        context.addIssue({
+          code: "custom",
+          message: `Share image must reference an existing informative image asset: ${id}`,
+          path,
+        });
+      }
+    }
+    if (manifest.defaultShare) checkShareReference(manifest.defaultShare, ["defaultShare"]);
 
     manifest.pages.forEach((page, index) => {
       if (pageIds.has(page.pageId)) {
@@ -176,6 +219,7 @@ export const mediaManifestSchema = z
         checkReference(id, "image", ["gallery", galleryIndex]),
       );
       if (page.trailer) checkReference(page.trailer, "video", ["trailer"]);
+      if (page.share) checkShareReference(page.share, ["pages", index, "share"]);
     });
   });
 

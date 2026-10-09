@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Lantern Relay fictional identity visual</title>
+  <desc id="desc">The Amber Lantern, a Relay Cell and a three-station East Circuit are concrete objects of this synthetic QA world, not real-game evidence.</desc>
+  <rect width="1200" height="630" fill="#17262c"/>
+  <g fill="none" stroke="#82a99b" stroke-width="8"><path d="M130 410H1070M210 410V200M595 410V280M985 410V260"/><path d="M190 210v-45q20-30 40 0v45"/></g>
+  <path d="M170 210h80l25 130H145z" fill="#efb960" stroke="#f5dc9d" stroke-width="5"/>
+  <rect x="555" y="235" width="80" height="95" rx="10" fill="#9cc7b7" stroke="#f5dc9d" stroke-width="5"/>
+  <path d="M570 235v-25h50v25" fill="#efb960"/>
+  <g fill="#efb960"><circle cx="865" cy="310" r="16"/><circle cx="985" cy="260" r="16"/><circle cx="1090" cy="310" r="16"/></g>
+  <path d="M865 310L985 260L1090 310" fill="none" stroke="#efb960" stroke-width="4"/>
+  <g font-family="sans-serif" fill="#edf1e6" text-anchor="middle">
+    <text x="600" y="90" font-size="42">LANTERN RELAY · SYNTHETIC QA</text>
+    <text x="210" y="475" font-size="28">Amber Lantern</text><text x="595" y="475" font-size="28">Relay Cell</text><text x="985" y="475" font-size="28">East Circuit</text>
+    <text x="600" y="550" font-size="23">Read the signal. Supply one cell. Follow the three stops.</text>
+    <text x="600" y="595" font-size="19">Original fictional world visual — no real-game identity approval</text>
+  </g>
+</svg>
